@@ -1,0 +1,15 @@
+{
+  "name": "ncbi-mcp",
+  "version": "0.1.0",
+  "description": "NCBI Entrez MCP adapter for Cursor",
+  "connections": [
+    {
+      "type": "stdio",
+      "command": ["node", "./bin/ncbi-mcp.js"]
+    }
+  ],
+  "schema": {
+    "request": "ncbi_requests.json",
+    "response": "ncbi_response.json"
+  }
+}
