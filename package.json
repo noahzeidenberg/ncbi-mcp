@@ -41,5 +41,8 @@
   "bugs": {
     "url": "https://github.com/yourusername/ncbi-mcp/issues"
   },
-  "homepage": "https://github.com/yourusername/ncbi-mcp#readme"
-} 
+  "homepage": "https://github.com/yourusername/ncbi-mcp#readme",
+  "devDependencies": {
+    "dotenv": "^16.5.0"
+  }
+}

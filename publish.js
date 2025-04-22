@@ -5,6 +5,7 @@
  * This script publishes the package to npm and Smithery
  */
 
+require('dotenv').config();
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
