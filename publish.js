@@ -52,22 +52,24 @@ try {
   process.exit(1);
 }
 
-// Create git tag
+// Create git tag if it doesn't exist
 const version = packageJson.version;
 try {
-  execSync(`git tag -a v${version} -m "Release version ${version}"`, { stdio: 'inherit' });
-  console.log(`Created git tag v${version}`);
+  // Check if tag exists
+  try {
+    execSync(`git rev-parse v${version}`, { stdio: 'ignore' });
+    console.log(`Git tag v${version} already exists, skipping tag creation`);
+  } catch {
+    // Tag doesn't exist, create it
+    execSync(`git tag -a v${version} -m "Release version ${version}"`, { stdio: 'inherit' });
+    console.log(`Created git tag v${version}`);
+    
+    // Push git tag
+    execSync(`git push origin v${version}`, { stdio: 'inherit' });
+    console.log(`Pushed git tag v${version}`);
+  }
 } catch (error) {
-  console.error('Error creating git tag:', error.message);
-  process.exit(1);
-}
-
-// Push git tag
-try {
-  execSync(`git push origin v${version}`, { stdio: 'inherit' });
-  console.log(`Pushed git tag v${version}`);
-} catch (error) {
-  console.error('Error pushing git tag:', error.message);
+  console.error('Error handling git tag:', error.message);
   process.exit(1);
 }
 
