@@ -5,7 +5,7 @@ A Model Control Protocol (MCP) adapter for NCBI Entrez databases that can be use
 ## Features
 
 - Query NCBI databases (PubMed, Gene, Protein, etc.)
-- Retrieve gene information and summaries
+- Retrieve summaries and specific information (e.g. genome 'L50', max contig size, etc.)
 - Analyze gene lists and relationships
 - Access NCBI Datasets API
 

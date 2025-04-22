@@ -1,6 +1,6 @@
 {
   "name": "ncbi-mcp",
-  "version": "0.2.6",
+  "version": "0.1.0",
   "description": "NCBI Entrez MCP adapter for Cursor",
   "main": "index.js",
   "bin": {
@@ -9,8 +9,7 @@
   "scripts": {
     "test": "node test-mcp.js",
     "start": "node bin/ncbi-mcp.js",
-    "publish": "node publish.js",
-    "postinstall": "node install-cursor.js"
+    "publish": "node publish.js"
   },
   "keywords": [
     "ncbi",
@@ -25,24 +24,9 @@
     "bin/",
     "*.py",
     "*.json",
-    "README.md",
-    "requirements.txt"
+    "README.md"
   ],
   "engines": {
     "node": ">=14.0.0"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/yourusername/ncbi-mcp.git"
-  },
-  "bugs": {
-    "url": "https://github.com/yourusername/ncbi-mcp/issues"
-  },
-  "homepage": "https://github.com/yourusername/ncbi-mcp#readme",
-  "devDependencies": {
-    "dotenv": "^16.5.0"
   }
-}
+} 

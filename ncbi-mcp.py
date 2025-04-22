@@ -4,13 +4,8 @@ import json
 import uuid
 import requests
 from datetime import datetime
-from typing import Dict, List, Any, Optional, Union
+from typing import Dict, List, Any, Optional
 from ncbi_datasets_client import NCBIDatasetsClient
-import logging
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 class NCBIClient:
     BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
@@ -100,214 +95,177 @@ def normalize_summary(raw: Dict[str, Any], fields: List[str]) -> List[Dict[str, 
         out.append(entry)
     return out
 
-class NCBIMCP:
-    def __init__(self):
-        self.client = NCBIDatasetsClient()
-        self.initialized = False
-
-    def handle_request(self, request: Union[Dict[str, Any], List[Dict[str, Any]]]) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
-        """Handle JSON-RPC 2.0 requests."""
-        try:
-            # Handle batch requests
-            if isinstance(request, list):
-                responses = []
-                for req in request:
-                    response = self._handle_single_request(req)
-                    if response is not None:  # Skip notifications
-                        responses.append(response)
-                return responses if responses else None
-
-            # Handle single request
-            return self._handle_single_request(request)
-
-        except Exception as e:
-            logger.error(f"Error handling request: {str(e)}")
-            return self._error_response(None, -32000, str(e))
-
-    def _handle_single_request(self, request: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Handle a single JSON-RPC 2.0 request."""
-        try:
-            # Validate request format
-            if not isinstance(request, dict):
-                return self._error_response(None, -32600, "Invalid Request")
-
-            # Check for required fields
-            if "jsonrpc" not in request or request["jsonrpc"] != "2.0":
-                return self._error_response(None, -32600, "Invalid Request: jsonrpc field missing or invalid")
-
-            if "method" not in request:
-                return self._error_response(None, -32600, "Invalid Request: method field missing")
-
-            # Extract request parameters
-            request_id = request.get("id")
-            method = request["method"]
-            params = request.get("params", {})
-
-            # Handle different methods
-            if method == "initialize":
-                return self._initialize(request_id, params)
-            elif method == "tools/list":
-                return self._tools_list(request_id)
-            elif method == "tools/call":
-                return self._tools_call(request_id, params)
-            elif method == "resources/list":
-                return self._resources_list(request_id)
-            else:
-                return self._error_response(request_id, -32601, f"Method {method} not found")
-
-        except Exception as e:
-            logger.error(f"Error handling request: {str(e)}")
-            return self._error_response(request_id, -32000, str(e))
-
-    def _initialize(self, request_id: Optional[Union[str, int]], params: Dict[str, Any]) -> Dict[str, Any]:
-        """Initialize the MCP."""
-        try:
-            # Perform any necessary initialization
-            self.initialized = True
-            return {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "result": {
-                    "capabilities": {
-                        "tools": True,
-                        "resources": True
-                    }
-                }
-            }
-        except Exception as e:
-            return self._error_response(request_id, -32000, str(e))
-
-    def _tools_list(self, request_id: Optional[Union[str, int]]) -> Dict[str, Any]:
-        """List available tools."""
-        tools = [
-            {
-                "name": "search_genes",
-                "description": "Search for genes in NCBI databases",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "Search query for genes"
-                        }
-                    },
-                    "required": ["query"]
-                }
-            },
-            {
-                "name": "get_gene_info",
-                "description": "Get detailed information about a specific gene",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "gene_id": {
-                            "type": "string",
-                            "description": "NCBI Gene ID"
-                        }
-                    },
-                    "required": ["gene_id"]
-                }
-            }
-        ]
-        return {
-            "jsonrpc": "2.0",
-            "id": request_id,
-            "result": {"tools": tools}
-        }
-
-    def _tools_call(self, request_id: Optional[Union[str, int]], params: Dict[str, Any]) -> Dict[str, Any]:
-        """Call a specific tool."""
-        try:
-            tool_name = params.get("name")
-            tool_params = params.get("parameters", {})
-
-            if not tool_name:
-                return self._error_response(request_id, -32602, "Invalid params: name is required")
-
-            if tool_name == "search_genes":
-                result = self.client.search_genes(tool_params.get("query"))
-            elif tool_name == "get_gene_info":
-                result = self.client.get_gene_info(tool_params.get("gene_id"))
-            else:
-                return self._error_response(request_id, -32601, f"Tool {tool_name} not found")
-
-            return {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "result": result
-            }
-        except Exception as e:
-            return self._error_response(request_id, -32000, str(e))
-
-    def _resources_list(self, request_id: Optional[Union[str, int]]) -> Dict[str, Any]:
-        """List available resources."""
-        resources = [
-            {
-                "name": "ncbi_datasets",
-                "description": "NCBI Datasets API",
-                "type": "api"
-            }
-        ]
-        return {
-            "jsonrpc": "2.0",
-            "id": request_id,
-            "result": {"resources": resources}
-        }
-
-    def _error_response(self, request_id: Optional[Union[str, int]], code: int, message: str) -> Dict[str, Any]:
-        """Generate error response."""
-        return {
-            "jsonrpc": "2.0",
-            "id": request_id,
-            "error": {
-                "code": code,
-                "message": message
-            }
-        }
-
 def main():
-    """Main entry point for the MCP."""
-    mcp = NCBIMCP()
+    # Read request from stdin
+    try:
+        request = json.loads(sys.stdin.read())
+        print(f"DEBUG: Received request: {json.dumps(request)}", file=sys.stderr)
+    except json.JSONDecodeError as e:
+        print(f"DEBUG: Error decoding request: {e}", file=sys.stderr)
+        print(json.dumps({"status": "error", "error": {"message": f"Invalid JSON request: {str(e)}"}}))
+        return
+    except Exception as e:
+        print(f"DEBUG: Unexpected error reading request: {e}", file=sys.stderr)
+        print(json.dumps({"status": "error", "error": {"message": f"Error reading request: {str(e)}"}}))
+        return
     
-    # Read input from stdin
-    while True:
-        try:
-            line = sys.stdin.readline()
-            if not line:
-                break
-
-            request = json.loads(line)
-            response = mcp.handle_request(request)
+    # Initialize NCBI client
+    ncbi_client = NCBIClient()
+    
+    # Process request based on operation
+    operation = request.get("operation")
+    response = {"status": "ok", "data": []}
+    
+    try:
+        if operation == "search":
+            database = request.get("database")
+            term = request.get("term")
+            filters = request.get("filters", {})
+            pagination = request.get("pagination", {})
+            retstart = pagination.get("retstart", 0)
+            retmax = pagination.get("retmax", 20)
             
-            # Write response to stdout (skip notifications)
-            if response is not None:
-                sys.stdout.write(json.dumps(response) + "\n")
-                sys.stdout.flush()
-
-        except json.JSONDecodeError:
-            logger.error("Invalid JSON received")
-            error_response = {
-                "jsonrpc": "2.0",
-                "error": {
-                    "code": -32700,
-                    "message": "Parse error"
-                },
-                "id": None
-            }
-            sys.stdout.write(json.dumps(error_response) + "\n")
-            sys.stdout.flush()
-        except Exception as e:
-            logger.error(f"Error: {str(e)}")
-            error_response = {
-                "jsonrpc": "2.0",
-                "error": {
-                    "code": -32000,
-                    "message": str(e)
-                },
-                "id": None
-            }
-            sys.stdout.write(json.dumps(error_response) + "\n")
-            sys.stdout.flush()
+            print(f"DEBUG: Performing search with database={database}, term={term}", file=sys.stderr)
+            
+            if not database or not term:
+                response["status"] = "error"
+                response["error"] = {"message": "Database and search term are required"}
+                print(json.dumps(response))
+                return
+                
+            search_result = ncbi_client.esearch(database, term, filters, retstart, retmax)
+            print(f"DEBUG: Search result: {json.dumps(search_result)}", file=sys.stderr)
+            
+            if "esearchresult" in search_result and "idlist" in search_result["esearchresult"]:
+                ids = search_result["esearchresult"]["idlist"]
+                count = int(search_result["esearchresult"].get("count", 0))
+                
+                # Format response data
+                for id in ids:
+                    response["data"].append({"id": id})
+                
+                response["pagination"] = {
+                    "count": count,
+                    "retstart": retstart,
+                    "retmax": retmax
+                }
+            else:
+                response["status"] = "error"
+                response["error"] = {"message": "Invalid search result format"}
+        
+        elif operation == "summary":
+            database = request.get("database")
+            ids = request.get("ids", [])
+            fields = request.get("fields", [])
+            
+            if not database or not ids:
+                response["status"] = "error"
+                response["error"] = {"message": "Database and IDs are required"}
+                print(json.dumps(response))
+                return
+                
+            summary_result = ncbi_client.esummary(database, ids)
+            
+            if "result" in summary_result:
+                response["data"] = normalize_summary(summary_result, fields)
+            else:
+                response["status"] = "error"
+                response["error"] = {"message": "Invalid summary result format"}
+        
+        elif operation == "link":
+            database = request.get("database")
+            ids = request.get("ids", [])
+            linkname = request.get("linkname")
+            
+            if not database or not ids or not linkname:
+                response["status"] = "error"
+                response["error"] = {"message": "Database, IDs, and linkname are required"}
+                print(json.dumps(response))
+                return
+                
+            link_result = ncbi_client.elink(database, ids, linkname)
+            
+            if "linksets" in link_result:
+                response["data"] = link_result["linksets"]
+            else:
+                response["status"] = "error"
+                response["error"] = {"message": "Invalid link result format"}
+        
+        elif operation in ["genome_metadata", "gene_metadata"]:
+            # Initialize datasets client only when needed
+            datasets_path = request.get("cli_paths", {}).get("datasets_path")
+            dataformat_path = request.get("cli_paths", {}).get("dataformat_path")
+            try:
+                datasets_client = NCBIDatasetsClient(datasets_path=datasets_path, dataformat_path=dataformat_path)
+            except ValueError as e:
+                response["status"] = "error"
+                response["error"] = {"message": str(e)}
+                print(json.dumps(response))
+                return
+            
+            if operation == "genome_metadata":
+                organism = request.get("organism")
+                if not organism:
+                    response["status"] = "error"
+                    response["error"] = {"message": "Organism parameter is required"}
+                    print(json.dumps(response))
+                    return
+                
+                try:
+                    # Use the correct command format: summary genome taxon <organism>
+                    result = datasets_client.get_genome_metadata(organism)
+                    if result:
+                        response["status"] = "ok"
+                        response["data"] = result
+                        response["provenance"] = {
+                            "assembly_accession": result[0].get("assembly_accession")
+                        }
+                    else:
+                        response["status"] = "error"
+                        response["error"] = {"message": "No genome metadata found"}
+                        print(json.dumps(response))
+                        return
+                except Exception as e:
+                    response["status"] = "error"
+                    response["error"] = {"message": str(e)}
+                    print(json.dumps(response))
+                    return
+            
+            elif operation == "gene_metadata":
+                gene_id = request.get("gene_id")
+                if not gene_id:
+                    response["status"] = "error"
+                    response["error"] = {"message": "Gene ID parameter is required"}
+                    print(json.dumps(response))
+                    return
+                
+                try:
+                    # Use the correct command format: summary gene gene-id <gene_id>
+                    result = datasets_client.get_gene_metadata(gene_id)
+                    if result:
+                        response["status"] = "ok"
+                        response["data"] = result
+                    else:
+                        response["status"] = "error"
+                        response["error"] = {"message": "No gene metadata found"}
+                        print(json.dumps(response))
+                        return
+                except Exception as e:
+                    response["status"] = "error"
+                    response["error"] = {"message": str(e)}
+                    print(json.dumps(response))
+                    return
+        
+        else:
+            response["status"] = "error"
+            response["error"] = {"message": f"Unknown operation: {operation}"}
+    
+    except Exception as e:
+        print(f"DEBUG: Error processing request: {e}", file=sys.stderr)
+        response["status"] = "error"
+        response["error"] = {"message": str(e)}
+    
+    print(json.dumps(response))
 
 if __name__ == "__main__":
     main()
