@@ -45,27 +45,43 @@ class NCBIDatasetsClient:
             bool: True if executable exists and is accessible, False otherwise.
         """
         try:
-            # Check if path exists and is executable
-            if not os.path.exists(path):
-                logging.error(f"Executable not found at path: {path}")
-                return False
-                
-            if not os.access(path, os.X_OK):
-                logging.error(f"File exists but is not executable: {path}")
-                return False
-
-            # For datasets.exe, also verify it responds to --version
-            if path.endswith("datasets.exe"):
+            # First try the exact path
+            if os.path.exists(path) and os.access(path, os.X_OK):
+                # For datasets.exe, also verify it responds to --version
+                if path.endswith("datasets.exe"):
+                    try:
+                        subprocess.run([path, "--version"], check=True, capture_output=True)
+                        return True
+                    except subprocess.CalledProcessError as e:
+                        logging.error(f"Failed to verify datasets version: {e}")
+                        return False
+                    except Exception as e:
+                        logging.error(f"Unexpected error verifying datasets: {e}")
+                        return False
+                return True
+            
+            # If the exact path doesn't exist, try finding it in PATH
+            if not os.path.isabs(path):
                 try:
-                    subprocess.run([path, "--version"], check=True, capture_output=True)
-                except subprocess.CalledProcessError as e:
-                    logging.error(f"Failed to verify datasets version: {e}")
+                    # Use 'where' on Windows to find the executable in PATH
+                    result = subprocess.run(['where', path], capture_output=True, text=True, check=True)
+                    found_path = result.stdout.strip().split('\n')[0]  # Take the first match
+                    if found_path and os.path.exists(found_path) and os.access(found_path, os.X_OK):
+                        # Update the path to use the found executable
+                        if path.endswith("datasets.exe"):
+                            self.datasets_path = found_path
+                        else:
+                            self.dataformat_path = found_path
+                        return True
+                except subprocess.CalledProcessError:
+                    logging.error(f"Could not find {path} in PATH")
                     return False
                 except Exception as e:
-                    logging.error(f"Unexpected error verifying datasets: {e}")
+                    logging.error(f"Error searching for {path} in PATH: {e}")
                     return False
-
-            return True
+                
+            logging.error(f"Executable not found at path: {path}")
+            return False
             
         except Exception as e:
             logging.error(f"Error verifying executable {path}: {e}")

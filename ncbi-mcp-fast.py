@@ -2,10 +2,11 @@
 import sys
 import json
 import uuid
+import asyncio
 import requests
 from datetime import datetime
 from typing import Dict, List, Any, Optional
-from mcp.server.fastmcp import FastMCP
+from fastmcp import FastMCP, Context
 from ncbi_datasets_client import NCBIDatasetsClient
 
 # Initialize FastMCP server
@@ -104,13 +105,18 @@ ncbi_client = NCBIClient()
 
 @mcp.tool()
 async def search(database: str, term: str, filters: Dict[str, Any] = None, 
-                retstart: int = 0, retmax: int = 20) -> Dict[str, Any]:
+                retstart: int = 0, retmax: int = 20, context: Context = None) -> Dict[str, Any]:
     """Search NCBI databases."""
     if not database or not term:
         return {"status": "error", "error": {"message": "Database and search term are required"}}
     
     try:
-        search_result = ncbi_client.esearch(database, term, filters or {}, retstart, retmax)
+        # Run the request in a thread pool to avoid blocking
+        loop = asyncio.get_running_loop()
+        search_result = await loop.run_in_executor(
+            None,
+            lambda: ncbi_client.esearch(database, term, filters or {}, retstart, retmax)
+        )
         
         if "esearchresult" in search_result and "idlist" in search_result["esearchresult"]:
             ids = search_result["esearchresult"]["idlist"]
@@ -131,13 +137,18 @@ async def search(database: str, term: str, filters: Dict[str, Any] = None,
         return {"status": "error", "error": {"message": str(e)}}
 
 @mcp.tool()
-async def summary(database: str, ids: List[str], fields: List[str] = None) -> Dict[str, Any]:
+async def summary(database: str, ids: List[str], fields: List[str] = None, context: Context = None) -> Dict[str, Any]:
     """Get summary information for NCBI records."""
     if not database or not ids:
         return {"status": "error", "error": {"message": "Database and IDs are required"}}
     
     try:
-        summary_result = ncbi_client.esummary(database, ids)
+        # Run the request in a thread pool to avoid blocking
+        loop = asyncio.get_running_loop()
+        summary_result = await loop.run_in_executor(
+            None,
+            lambda: ncbi_client.esummary(database, ids)
+        )
         
         if "result" in summary_result:
             return {
@@ -150,13 +161,18 @@ async def summary(database: str, ids: List[str], fields: List[str] = None) -> Di
         return {"status": "error", "error": {"message": str(e)}}
 
 @mcp.tool()
-async def link(database: str, ids: List[str], linkname: str) -> Dict[str, Any]:
+async def link(database: str, ids: List[str], linkname: str, context: Context = None) -> Dict[str, Any]:
     """Get linked records from NCBI."""
     if not database or not ids or not linkname:
         return {"status": "error", "error": {"message": "Database, IDs, and linkname are required"}}
     
     try:
-        link_result = ncbi_client.elink(database, ids, linkname)
+        # Run the request in a thread pool to avoid blocking
+        loop = asyncio.get_running_loop()
+        link_result = await loop.run_in_executor(
+            None,
+            lambda: ncbi_client.elink(database, ids, linkname)
+        )
         
         if "linksets" in link_result:
             return {
@@ -169,14 +185,19 @@ async def link(database: str, ids: List[str], linkname: str) -> Dict[str, Any]:
         return {"status": "error", "error": {"message": str(e)}}
 
 @mcp.tool()
-async def genome_metadata(organism: str, datasets_path: str = None, dataformat_path: str = None) -> Dict[str, Any]:
+async def genome_metadata(organism: str, datasets_path: str = None, dataformat_path: str = None, context: Context = None) -> Dict[str, Any]:
     """Get genome metadata from NCBI Datasets."""
     if not organism:
         return {"status": "error", "error": {"message": "Organism parameter is required"}}
     
     try:
+        # Run the request in a thread pool to avoid blocking
+        loop = asyncio.get_running_loop()
         datasets_client = NCBIDatasetsClient(datasets_path=datasets_path, dataformat_path=dataformat_path)
-        result = datasets_client.get_genome_metadata(organism)
+        result = await loop.run_in_executor(
+            None,
+            lambda: datasets_client.get_genome_metadata(organism)
+        )
         
         if result:
             return {
@@ -192,14 +213,19 @@ async def genome_metadata(organism: str, datasets_path: str = None, dataformat_p
         return {"status": "error", "error": {"message": str(e)}}
 
 @mcp.tool()
-async def gene_metadata(gene_id: str, datasets_path: str = None, dataformat_path: str = None) -> Dict[str, Any]:
+async def gene_metadata(gene_id: str, datasets_path: str = None, dataformat_path: str = None, context: Context = None) -> Dict[str, Any]:
     """Get gene metadata from NCBI Datasets."""
     if not gene_id:
         return {"status": "error", "error": {"message": "Gene ID parameter is required"}}
     
     try:
+        # Run the request in a thread pool to avoid blocking
+        loop = asyncio.get_running_loop()
         datasets_client = NCBIDatasetsClient(datasets_path=datasets_path, dataformat_path=dataformat_path)
-        result = datasets_client.get_gene_metadata(gene_id)
+        result = await loop.run_in_executor(
+            None,
+            lambda: datasets_client.get_gene_metadata(gene_id)
+        )
         
         if result:
             return {
@@ -211,5 +237,30 @@ async def gene_metadata(gene_id: str, datasets_path: str = None, dataformat_path
     except Exception as e:
         return {"status": "error", "error": {"message": str(e)}}
 
+@mcp.prompt()
+async def process_prompt(prompt: str, context: Context = None) -> str:
+    """Process a natural language prompt and convert it into tool calls."""
+    try:
+        # Extract key information from the prompt
+        if "gene" in prompt.lower():
+            # Search for gene information
+            search_result = await search("gene", prompt, retmax=1, context=context)
+            if search_result["status"] == "ok" and search_result["data"]:
+                gene_id = search_result["data"][0]["id"]
+                summary_result = await summary("gene", [gene_id], ["title", "summary"], context=context)
+                if summary_result["status"] == "ok":
+                    return json.dumps(summary_result["data"], indent=2)
+        
+        # Default to a basic search if no specific pattern is matched
+        search_result = await search("gene", prompt, retmax=5, context=context)
+        return json.dumps(search_result, indent=2)
+    except Exception as e:
+        return json.dumps({"status": "error", "error": {"message": str(e)}}, indent=2)
+
 if __name__ == "__main__":
-    mcp.run() 
+    try:
+        # Run the MCP server with stdio transport
+        mcp.run(transport="stdio")
+    except Exception as e:
+        print(f"Error running MCP server: {str(e)}", file=sys.stderr)
+        sys.exit(1) 
