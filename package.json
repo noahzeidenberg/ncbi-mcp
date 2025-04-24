@@ -1,6 +1,6 @@
 {
   "name": "ncbi-mcp",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "NCBI Entrez MCP adapter for Cursor",
   "main": "index.js",
   "bin": {
@@ -36,12 +36,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/ncbi-mcp.git"
+    "url": "git+https://github.com/noahzeidenberg/ncbi-mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/ncbi-mcp/issues"
+    "url": "https://github.com/noahzeidenberg/ncbi-mcp/issues"
   },
-  "homepage": "https://github.com/yourusername/ncbi-mcp#readme",
+  "homepage": "https://github.com/noahzeidenberg/ncbi-mcp#readme",
   "devDependencies": {
     "dotenv": "^16.5.0"
   }
