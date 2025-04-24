@@ -52,42 +52,8 @@ try {
   process.exit(1);
 }
 
-// Function to cleanup on failure
-function cleanup(version) {
-  try {
-    // Delete local tag if it exists
-    try {
-      execSync(`git tag -d v${version}`, { stdio: 'ignore' });
-      console.log(`Deleted local tag v${version}`);
-    } catch (e) {
-      // Tag doesn't exist locally, ignore
-    }
-    
-    // Delete remote tag if it exists
-    try {
-      execSync(`git push origin :refs/tags/v${version}`, { stdio: 'ignore' });
-      console.log(`Deleted remote tag v${version}`);
-    } catch (e) {
-      // Tag doesn't exist remotely, ignore
-    }
-  } catch (error) {
-    console.error('Warning: Cleanup failed:', error.message);
-  }
-}
-
+// Create git tag if it doesn't exist
 const version = packageJson.version;
-
-// Publish to npm first
-console.log(`Publishing ${packageJson.name}@${version} to npm...`);
-try {
-  execSync('npm publish', { stdio: 'inherit' });
-  console.log(`Successfully published ${packageJson.name}@${version} to npm`);
-} catch (error) {
-  console.error('Error publishing package to npm:', error.message);
-  process.exit(1);
-}
-
-// Only create git tag after successful npm publish
 try {
   // Check if tag exists
   try {
@@ -104,7 +70,16 @@ try {
   }
 } catch (error) {
   console.error('Error handling git tag:', error.message);
-  cleanup(version);
+  process.exit(1);
+}
+
+// Publish to npm
+console.log(`Publishing ${packageJson.name}@${version} to npm...`);
+try {
+  execSync('npm publish', { stdio: 'inherit' });
+  console.log(`Successfully published ${packageJson.name}@${version} to npm`);
+} catch (error) {
+  console.error('Error publishing package to npm:', error.message);
   process.exit(1);
 }
 
@@ -127,21 +102,23 @@ const options = {
   headers: {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${smitheryApiKey}`,
-    'Content-Length': Buffer.byteLength(smitheryData)
+    'Content-Length': smitheryData.length
   }
 };
 
 const req = https.request(options, (res) => {
   let data = '';
-  res.on('data', (chunk) => {
-    data += chunk;
-  });
+  res.on('data', (chunk) => data += chunk);
   res.on('end', () => {
     if (res.statusCode === 200) {
       console.log('Successfully published to Smithery');
+      console.log('\nRelease Summary:');
+      console.log(`- Version: ${version}`);
+      console.log(`- NPM: https://www.npmjs.com/package/${packageJson.name}`);
+      console.log(`- Smithery: https://smithery.dev/mcp/${packageJson.name}`);
+      console.log(`- GitHub: https://github.com/${packageJson.repository.url.split('/').slice(-2).join('/')}/releases/tag/v${version}`);
     } else {
       console.error('Error publishing to Smithery:', data);
-      cleanup(version);
       process.exit(1);
     }
   });
@@ -149,7 +126,6 @@ const req = https.request(options, (res) => {
 
 req.on('error', (error) => {
   console.error('Error publishing to Smithery:', error.message);
-  cleanup(version);
   process.exit(1);
 });
 
