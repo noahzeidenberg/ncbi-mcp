@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * NCBI MCP Adapter for Cursor
- * This script serves as a wrapper to call the Python MCP implementation
+ * Debug script for NCBI MCP
+ * This script helps diagnose issues with the MCP client and server communication
  */
 
 const { spawn } = require('child_process');
@@ -10,7 +10,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Get the path to the Python script
-const scriptDir = path.resolve(__dirname, '..');
+const scriptDir = path.resolve(__dirname);
 const pythonScript = path.join(scriptDir, 'ncbi-mcp.py');
 
 // Check if the Python script exists
@@ -72,40 +72,70 @@ const initMessage = {
   }
 };
 
-// Send initialization message
-console.error('Sending init message:', JSON.stringify(initMessage, null, 2));
-
 // Spawn the Python process
 const pythonExecutable = findPythonExecutable();
-console.error(`Using Python executable: ${pythonExecutable}`);
+console.log(`Using Python executable: ${pythonExecutable}`);
 const pythonProcess = spawn(pythonExecutable, [pythonScript], {
   stdio: ['pipe', 'pipe', 'pipe']
 });
 
-// Send initialization message to Python process
-pythonProcess.stdin.write(JSON.stringify(initMessage) + '\n');
-
 // Handle incoming messages from Python
 pythonProcess.stdout.on('data', (data) => {
-  console.error('Received from Python stdout:', data.toString());
-  process.stdout.write(data);
+  console.log('Received from Python stdout:', data.toString());
 });
 
 // Handle errors from Python
 pythonProcess.stderr.on('data', (data) => {
-  console.error('Received from Python stderr:', data.toString());
-  process.stderr.write(data);
+  console.log('Received from Python stderr:', data.toString());
 });
 
-// Pipe stdin to Python
-process.stdin.on('data', (data) => {
-  console.error('Sending to Python:', data.toString());
-  pythonProcess.stdin.write(data);
-});
+// Send initialization message to Python process
+console.log('Sending init message:', JSON.stringify(initMessage, null, 2));
+pythonProcess.stdin.write(JSON.stringify(initMessage) + '\n');
+
+// Wait for a response
+setTimeout(() => {
+  // Send a tools/list request
+  const toolsListMessage = {
+    jsonrpc: "2.0",
+    id: 2,
+    method: "tools/list"
+  };
+  
+  console.log('Sending tools/list message:', JSON.stringify(toolsListMessage, null, 2));
+  pythonProcess.stdin.write(JSON.stringify(toolsListMessage) + '\n');
+  
+  // Wait for a response
+  setTimeout(() => {
+    // Send a tools/call request
+    const toolsCallMessage = {
+      jsonrpc: "2.0",
+      id: 3,
+      method: "tools/call",
+      params: {
+        tool: "ncbi-search",
+        params: {
+          database: "gene",
+          term: "BRCA1[Gene Name]",
+          filters: {}
+        }
+      }
+    };
+    
+    console.log('Sending tools/call message:', JSON.stringify(toolsCallMessage, null, 2));
+    pythonProcess.stdin.write(JSON.stringify(toolsCallMessage) + '\n');
+    
+    // Wait for a response
+    setTimeout(() => {
+      console.log('Test completed, closing Python process');
+      pythonProcess.kill();
+    }, 5000);
+  }, 5000);
+}, 5000);
 
 // Handle process exit
 pythonProcess.on('close', (code) => {
-  console.error('Python process exited with code:', code);
+  console.log('Python process exited with code:', code);
   process.exit(code);
 });
 
@@ -113,16 +143,4 @@ pythonProcess.on('close', (code) => {
 pythonProcess.on('error', (err) => {
   console.error('Failed to start Python process:', err);
   process.exit(1);
-});
-
-// Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught exception:', err);
-  process.exit(1);
-});
-
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled promise rejection:', reason);
-  process.exit(1);
-});
+}); 

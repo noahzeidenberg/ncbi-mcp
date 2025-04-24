@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional, Union
 from ncbi_datasets_client import NCBIDatasetsClient
 import logging
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -224,12 +225,29 @@ def main():
     logger.debug("Starting NCBI MCP server")
     mcp = NCBIMCP()
     
+    # Log system information
+    logger.debug(f"Python version: {sys.version}")
+    logger.debug(f"Platform: {sys.platform}")
+    logger.debug(f"Working directory: {os.getcwd()}")
+    logger.debug(f"Script location: {os.path.abspath(__file__)}")
+    
+    # Log environment variables
+    logger.debug("Environment variables:")
+    for key, value in os.environ.items():
+        if key.startswith('PATH') or key.startswith('PYTHON'):
+            logger.debug(f"  {key}: {value}")
+    
+    # Log Python path
+    logger.debug(f"Python path: {sys.path}")
+    
     while True:
         try:
             line = sys.stdin.readline()
             if not line:
+                logger.debug("No more input, exiting")
                 break
                 
+            logger.debug(f"Raw input: {line}")
             request = json.loads(line)
             logger.debug(f"Received request: {json.dumps(request, indent=2)}")
             
@@ -238,9 +256,12 @@ def main():
                 logger.debug(f"Sending response: {json.dumps(response, indent=2)}")
                 print(json.dumps(response))
                 sys.stdout.flush()
+            else:
+                logger.warning("No response generated for request")
                 
         except json.JSONDecodeError as e:
             logger.error(f"Error decoding JSON: {str(e)}")
+            logger.error(f"Problematic input: {line}")
             continue
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}", exc_info=True)
