@@ -15,21 +15,18 @@ runtime:
     PYTHONUNBUFFERED: 1
     PYTHONPATH: /app
 
-# Add this new block:
-connections:
-  cursor:
-    type: stdio
-    configSchema:
-      # No user-config needed, so an empty schema
-      type: object
-      properties: {}
-    commandFunction: |
-      (config) => ({
-        command: "node",
-        args: ["./bin/ncbi-mcp.js"],
-        env: { PYTHONPATH: "${workspaceFolder}" },
-        shell: false
-      })
+# startCommand (alternative to connections:)
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties: {}
+  commandFunction: |
+    (config) => ({
+      command: "node",
+      args: ["./bin/ncbi-mcp.js"],
+      env: { PYTHONPATH: "${workspaceFolder}" }
+    })
 
 # Existing MCP definition (optional, for local tooling)
 mcp:
