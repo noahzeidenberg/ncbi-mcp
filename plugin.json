@@ -1,15 +1,30 @@
 {
   "name": "ncbi-mcp",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "NCBI Entrez MCP adapter for Cursor",
   "connections": [
     {
       "type": "stdio",
-      "command": ["node", "./bin/ncbi-mcp.js"]
+      "command": ["node", "./bin/ncbi-mcp.js"],
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
     }
   ],
   "schema": {
     "request": "ncbi_requests.json",
     "response": "ncbi_response.json"
+  },
+  "capabilities": {
+    "tools": {
+      "enabled": true
+    },
+    "resources": {
+      "enabled": true
+    },
+    "logging": {
+      "enabled": true,
+      "level": "info"
+    }
   }
 }

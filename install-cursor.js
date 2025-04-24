@@ -27,6 +27,12 @@ if (!fs.existsSync(mcpDir)) {
   fs.mkdirSync(mcpDir, { recursive: true });
 }
 
+// Create bin directory
+const binDir = path.join(mcpDir, 'bin');
+if (!fs.existsSync(binDir)) {
+  fs.mkdirSync(binDir, { recursive: true });
+}
+
 // Copy the necessary files
 const filesToCopy = [
   'plugin.json',
@@ -34,7 +40,8 @@ const filesToCopy = [
   'ncbi_datasets_client.py',
   'analyze_genes.py',
   'ncbi_requests.json',
-  'ncbi_response.json'
+  'ncbi_response.json',
+  'requirements.txt'
 ];
 
 console.log('Copying files to Cursor extensions directory...');
@@ -50,13 +57,39 @@ for (const file of filesToCopy) {
   }
 }
 
-// Make the Python script executable
-const pythonScriptPath = path.join(mcpDir, 'ncbi-mcp.py');
+// Copy the Node.js wrapper script
+const wrapperScript = path.join(__dirname, 'bin', 'ncbi-mcp.js');
+const targetWrapperScript = path.join(binDir, 'ncbi-mcp.js');
+if (fs.existsSync(wrapperScript)) {
+  fs.copyFileSync(wrapperScript, targetWrapperScript);
+  console.log(`Copied ncbi-mcp.js to ${targetWrapperScript}`);
+} else {
+  console.error('Error: ncbi-mcp.js not found');
+  process.exit(1);
+}
+
+// Make the scripts executable
+const scriptsToMakeExecutable = [
+  path.join(mcpDir, 'ncbi-mcp.py'),
+  targetWrapperScript
+];
+
+for (const script of scriptsToMakeExecutable) {
+  try {
+    fs.chmodSync(script, '755');
+    console.log(`Made ${script} executable`);
+  } catch (error) {
+    console.warn(`Warning: Could not make ${script} executable: ${error.message}`);
+  }
+}
+
+// Install Python dependencies
+console.log('\nInstalling Python dependencies...');
 try {
-  fs.chmodSync(pythonScriptPath, '755');
-  console.log(`Made ${pythonScriptPath} executable`);
+  execSync('pip install -r requirements.txt', { stdio: 'inherit' });
 } catch (error) {
-  console.warn(`Warning: Could not make ${pythonScriptPath} executable: ${error.message}`);
+  console.error('Error installing Python dependencies:', error.message);
+  process.exit(1);
 }
 
 console.log('\nNCBI MCP has been installed in Cursor.');

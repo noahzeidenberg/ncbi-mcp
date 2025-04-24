@@ -14,6 +14,21 @@ mcp = FastMCP(
     name="NCBI MCP",
     instructions="This server provides tools for interacting with NCBI databases.",
     protocol_version="2.0",
+    capabilities={
+        "logging": {
+            "enabled": True,
+            "level": "info"
+        },
+        "prompts": {
+            "enabled": True
+        },
+        "resources": {
+            "enabled": True
+        },
+        "tools": {
+            "enabled": True
+        }
+    },
     server_info={
         "name": "NCBI MCP",
         "version": "1.0.0",
