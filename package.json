@@ -1,6 +1,6 @@
 {
   "name": "ncbi-mcp",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "NCBI Entrez MCP adapter for Cursor",
   "main": "index.js",
   "bin": {
