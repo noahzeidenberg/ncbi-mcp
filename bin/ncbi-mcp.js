@@ -44,7 +44,7 @@ const initMessage = {
   },
   serverInfo: {
     name: "ncbi-mcp",
-    version: "1.0.7",
+    version: "1.0.8",
     description: "NCBI Entrez MCP adapter for Cursor"
   }
 };
@@ -86,4 +86,4 @@ pythonProcess.on('close', (code) => {
 pythonProcess.on('error', (err) => {
   console.error('Failed to start Python process:', err);
   process.exit(1);
-}); 
+});
