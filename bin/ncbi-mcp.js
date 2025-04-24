@@ -21,42 +21,43 @@ if (!fs.existsSync(pythonScript)) {
 
 // Initialize MCP protocol
 const initMessage = {
-  protocolVersion: "1.0",
-  capabilities: {
-    resources: {},
-    tools: {
-      "ncbi-search": {
-        description: "Search NCBI databases",
-        parameters: {
-          database: { type: "string", description: "NCBI database to search" },
-          term: { type: "string", description: "Search term" },
-          filters: { type: "object", description: "Optional filters" }
-        }
-      },
-      "ncbi-fetch": {
-        description: "Fetch records from NCBI",
-        parameters: {
-          database: { type: "string", description: "NCBI database" },
-          ids: { type: "array", description: "List of IDs to fetch" }
+  jsonrpc: "2.0",
+  id: 1,
+  method: "initialize",
+  params: {
+    capabilities: {
+      resources: {},
+      tools: {
+        "ncbi-search": {
+          description: "Search NCBI databases",
+          parameters: {
+            database: { type: "string", description: "NCBI database to search" },
+            term: { type: "string", description: "Search term" },
+            filters: { type: "object", description: "Optional filters" }
+          }
+        },
+        "ncbi-fetch": {
+          description: "Fetch records from NCBI",
+          parameters: {
+            database: { type: "string", description: "NCBI database" },
+            ids: { type: "array", description: "List of IDs to fetch" }
+          }
         }
       }
     }
-  },
-  serverInfo: {
-    name: "ncbi-mcp",
-    version: "1.0.8",
-    description: "NCBI Entrez MCP adapter for Cursor"
   }
 };
 
 // Send initialization message
 console.error('Sending init message:', JSON.stringify(initMessage, null, 2));
-console.log(JSON.stringify(initMessage));
 
 // Spawn the Python process
 const pythonProcess = spawn('python3', [pythonScript], {
   stdio: ['pipe', 'pipe', 'pipe']
 });
+
+// Send initialization message to Python process
+pythonProcess.stdin.write(JSON.stringify(initMessage) + '\n');
 
 // Handle incoming messages from Python
 pythonProcess.stdout.on('data', (data) => {

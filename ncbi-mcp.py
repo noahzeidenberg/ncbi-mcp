@@ -139,8 +139,10 @@ class NCBIMCP:
         logger.debug("Initializing MCP")
         self.initialized = True
         return {
+            "jsonrpc": "2.0",
             "id": request_id,
             "result": {
+                "capabilities": params.get("capabilities", {}),
                 "status": "ok",
                 "message": "Initialized successfully"
             }
@@ -149,6 +151,7 @@ class NCBIMCP:
     def _tools_list(self, request_id: Optional[Union[str, int]]) -> Dict[str, Any]:
         logger.debug("Listing tools")
         return {
+            "jsonrpc": "2.0",
             "id": request_id,
             "result": {
                 "tools": {
@@ -191,6 +194,7 @@ class NCBIMCP:
             return self._error_response(request_id, 400, f"Unknown tool: {tool}")
 
         return {
+            "jsonrpc": "2.0",
             "id": request_id,
             "result": result
         }
@@ -198,6 +202,7 @@ class NCBIMCP:
     def _resources_list(self, request_id: Optional[Union[str, int]]) -> Dict[str, Any]:
         logger.debug("Listing resources")
         return {
+            "jsonrpc": "2.0",
             "id": request_id,
             "result": {
                 "resources": {}
@@ -207,6 +212,7 @@ class NCBIMCP:
     def _error_response(self, request_id: Optional[Union[str, int]], code: int, message: str) -> Dict[str, Any]:
         logger.error(f"Error: {message}")
         return {
+            "jsonrpc": "2.0",
             "id": request_id,
             "error": {
                 "code": code,
