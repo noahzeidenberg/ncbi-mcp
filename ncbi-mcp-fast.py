@@ -13,7 +13,12 @@ from ncbi_datasets_client import NCBIDatasetsClient
 mcp = FastMCP(
     name="NCBI MCP",
     instructions="This server provides tools for interacting with NCBI databases.",
-    protocol_version="2.0"
+    protocol_version="2.0",
+    server_info={
+        "name": "NCBI MCP",
+        "version": "1.0.0",
+        "description": "Model Context Protocol server for NCBI databases"
+    }
 )
 
 class NCBIClient:
@@ -154,18 +159,27 @@ async def ncbi_fetch(database: str, ids: List[str], ctx: Context = None) -> Dict
             await ctx.error(f"Error fetching from NCBI: {str(e)}")
         raise
 
-@mcp.resource("ncbi://databases")
-async def list_databases(ctx: Context = None) -> List[str]:
-    """List available NCBI databases."""
+@mcp.resource("ncbi://databases/{database}")
+async def list_databases(database: str = None, ctx: Context = None) -> List[str]:
+    """List available NCBI databases or get information about a specific database."""
     if ctx:
-        await ctx.info("Fetching available NCBI databases")
+        await ctx.info(f"Fetching information about database: {database if database else 'all databases'}")
     
     try:
-        result = ncbi_client._make_request("einfo.fcgi", {})
-        databases = result.get("einforesult", {}).get("dblist", [])
-        if ctx:
-            await ctx.info(f"Found {len(databases)} databases")
-        return databases
+        if database:
+            # Get specific database info
+            result = ncbi_client._make_request("einfo.fcgi", {"db": database})
+            db_info = result.get("einforesult", {}).get("dbinfo", {})
+            if ctx:
+                await ctx.info(f"Found information for database: {database}")
+            return [db_info]
+        else:
+            # List all databases
+            result = ncbi_client._make_request("einfo.fcgi", {})
+            databases = result.get("einforesult", {}).get("dblist", [])
+            if ctx:
+                await ctx.info(f"Found {len(databases)} databases")
+            return databases
     except Exception as e:
         if ctx:
             await ctx.error(f"Error listing databases: {str(e)}")

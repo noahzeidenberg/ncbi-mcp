@@ -51,16 +51,21 @@ const initMessage = {
     protocolVersion: "2.0",
     capabilities: {
       logging: {
-        level: "info"
+        level: "info",
+        enabled: true
       },
-      prompts: {},
+      prompts: {
+        enabled: true
+      },
       resources: {
+        enabled: true,
         "ncbi://databases": {
           description: "List available NCBI databases",
           mimeType: "application/json"
         }
       },
       tools: {
+        enabled: true,
         "ncbi-search": {
           description: "Search NCBI databases",
           parameters: {
@@ -104,6 +109,11 @@ const initMessage = {
           }
         }
       }
+    },
+    serverInfo: {
+      name: "NCBI MCP",
+      version: "1.0.0",
+      description: "Model Context Protocol server for NCBI databases"
     }
   }
 };
