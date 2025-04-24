@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * NCBI MCP Adapter for Cursor
+ * NCBI MCP Adapter for Cursor and Claude Desktop
  * This script serves as a wrapper to call the Python MCP implementation
  */
 
@@ -10,7 +10,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Get the path to the Python script
-const pythonScript = path.join(__dirname, '..', 'ncbi-mcp.py');
+const pythonScript = path.join(__dirname, '..', 'src', 'server', 'server.py');
 
 // Check if Python script exists
 if (!fs.existsSync(pythonScript)) {
@@ -18,8 +18,17 @@ if (!fs.existsSync(pythonScript)) {
   process.exit(1);
 }
 
+// Parse command line arguments
+const args = process.argv.slice(2);
+const pythonArgs = [];
+
+// Add any additional arguments
+if (args.length > 0) {
+  pythonArgs.push(...args);
+}
+
 // Spawn the Python process
-const pythonProcess = spawn('python', [pythonScript], {
+const pythonProcess = spawn('python', [pythonScript, ...pythonArgs], {
   stdio: ['pipe', 'pipe', 'pipe']
 });
 

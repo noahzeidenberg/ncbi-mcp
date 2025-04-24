@@ -1,32 +1,33 @@
 {
   "name": "ncbi-mcp",
-  "version": "1.0.12",
-  "description": "NCBI Entrez MCP adapter for Cursor",
+  "version": "1.0.15",
+  "description": "NCBI Entrez MCP adapter for Cursor and Claude Desktop",
   "main": "index.js",
   "bin": {
     "ncbi-mcp": "./bin/ncbi-mcp.js"
   },
   "scripts": {
     "test": "node test-mcp.js",
-    "start": "node bin/ncbi-mcp.js",
-    "postinstall": "node install-cursor.js"
+    "start": "node bin/ncbi-mcp.js"
   },
   "keywords": [
     "ncbi",
     "entrez",
     "mcp",
     "cursor",
+    "claude",
     "bioinformatics"
   ],
   "author": "",
   "license": "Apache-2.0",
   "files": [
     "bin/",
-    "*.py",
+    "src/",
     "*.json",
     "*.js",
     "README.md",
-    "requirements.txt"
+    "requirements.txt",
+    "smithery.yaml"
   ],
   "engines": {
     "node": ">=14.0.0"
@@ -44,8 +45,5 @@
   "homepage": "https://github.com/noahzeidenberg/ncbi-mcp#readme",
   "devDependencies": {
     "dotenv": "^16.5.0"
-  },
-  "dependencies": {
-    "ncbi-mcp": "^1.0.12"
   }
 }

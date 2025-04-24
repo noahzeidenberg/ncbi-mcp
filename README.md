@@ -1,6 +1,8 @@
-# NCBI MCP for Cursor
+# NCBI MCP
 
-A Model Control Protocol (MCP) adapter for NCBI Entrez databases that can be used with Cursor.
+NCBI Model Context Protocol (MCP) adapter for Cursor and Claude Desktop.
+
+This MCP server provides access to NCBI databases through the Model Context Protocol, allowing AI assistants to search and retrieve data from NCBI databases.
 
 ## Features
 
@@ -11,54 +13,82 @@ A Model Control Protocol (MCP) adapter for NCBI Entrez databases that can be use
 
 ## Installation
 
-### Using npm/npx
+### For Cursor
 
 ```bash
-# Install globally
 npm install -g ncbi-mcp
-
-# Or use directly with npx
-npx ncbi-mcp
 ```
 
-### Manual Installation
+After installation, restart Cursor and go to Settings > Extensions. Add the MCP with the command: `ncbi-mcp`
+
+### For Claude Desktop
 
 1. Clone this repository
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Make the Python script executable:
-   ```bash
-   chmod +x ncbi-mcp.py
-   ```
+2. Add the following to your Claude Desktop configuration file:
+
+#### On macOS:
+`~/Library/Application Support/Claude/claude_desktop_config.json`
+
+#### On Windows:
+`%APPDATA%/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "ncbi-mcp": {
+      "command": "python",
+      "args": [
+        "-m",
+        "src.server",
+        "--api-key",
+        "YOUR_NCBI_API_KEY",
+        "--email",
+        "YOUR_EMAIL"
+      ],
+      "env": {
+        "PYTHONPATH": "PATH_TO_NCBI_MCP_DIRECTORY"
+      }
+    }
+  }
+}
+```
+
+Replace `PATH_TO_NCBI_MCP_DIRECTORY` with the absolute path to the directory where you cloned this repository.
 
 ## Usage
 
-### In Cursor
+Once installed, you can use the NCBI MCP in your conversations with Claude or Cursor. The MCP provides the following tools:
 
-1. Open Cursor
-2. Go to Settings > Extensions
-3. Add the MCP with the command: `ncbi-mcp`
+- `ncbi-search`: Search NCBI databases
+- `ncbi-fetch`: Fetch records from NCBI
 
-### Command Line
+## Development
+
+### Prerequisites
+
+- Python 3.8+
+- Node.js 14+
+
+### Setup
+
+1. Clone this repository
+2. Install dependencies:
 
 ```bash
-# Using npx
-npx ncbi-mcp
+# Install Python dependencies
+pip install -r requirements.txt
 
-# Or if installed globally
-ncbi-mcp
+# Install Node.js dependencies
+npm install
 ```
 
-## Configuration
+### Testing
 
-Create a `.env` file in the project root with your NCBI API key:
-
-```
-NCBI_API_KEY=your_api_key_here
+```bash
+# Test the MCP server
+npm test
 ```
 
 ## License
 
-MIT 
+Apache-2.0 

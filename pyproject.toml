@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ncbi-mcp"
+version = "1.0.15"
+description = "NCBI Entrez MCP adapter for Cursor and Claude Desktop"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "Noah Zeidenberg"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/noahzeidenberg/ncbi-mcp"
+"Bug Tracker" = "https://github.com/noahzeidenberg/ncbi-mcp/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+packages = ["server"] 

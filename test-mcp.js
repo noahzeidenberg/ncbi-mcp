@@ -2,59 +2,88 @@
 
 /**
  * Test script for NCBI MCP
- * This script sends a simple request to the MCP and displays the response
+ * This script tests the MCP server by sending a simple request
  */
 
 const { spawn } = require('child_process');
 const path = require('path');
+const fs = require('fs');
 
-// Path to the MCP script
-const mcpScript = path.join(__dirname, 'bin', 'ncbi-mcp.js');
+// Get the path to the Python script
+const pythonScript = path.join(__dirname, 'src', 'server', 'server.py');
 
-// Create a test request
-const testRequest = {
-  jsonrpc: '2.0',
-  id: 1,
-  operation: 'search',
-  database: 'gene',
-  term: 'BRCA1[Gene Name] AND human[Organism]',
-  pagination: {
-    retmax: 1
-  }
-};
+// Check if Python script exists
+if (!fs.existsSync(pythonScript)) {
+  console.error(`Error: Python script not found at ${pythonScript}`);
+  process.exit(1);
+}
 
-// Spawn the MCP process
-const mcpProcess = spawn('node', [mcpScript], {
+// Spawn the Python process
+const pythonProcess = spawn('python', [pythonScript, '--debug'], {
   stdio: ['pipe', 'pipe', 'pipe']
 });
 
-// Send the test request
-mcpProcess.stdin.write(JSON.stringify(testRequest) + '\n');
-mcpProcess.stdin.end();
-
-// Collect the response
-let response = '';
-mcpProcess.stdout.on('data', (data) => {
-  response += data.toString();
+// Handle Python process errors
+pythonProcess.on('error', (err) => {
+  console.error('Failed to start Python process:', err);
+  process.exit(1);
 });
 
-// Handle process completion
-mcpProcess.on('close', (code) => {
-  console.log(`MCP process exited with code ${code}`);
-  try {
-    const parsedResponse = JSON.parse(response);
-    console.log('Response:', JSON.stringify(parsedResponse, null, 2));
-  } catch (error) {
-    console.error('Error parsing response:', error);
-    console.log('Raw response:', response);
+// Send initialization request
+const initRequest = {
+  jsonrpc: "2.0",
+  id: 1,
+  method: "initialize",
+  params: {
+    capabilities: {
+      tools: {
+        enabled: true
+      },
+      resources: {
+        enabled: true
+      },
+      logging: {
+        enabled: true,
+        level: "info"
+      }
+    }
   }
+};
+
+console.log('Sending initialization request...');
+pythonProcess.stdin.write(JSON.stringify(initRequest) + '\n');
+
+// Handle Python process output
+pythonProcess.stdout.on('data', (data) => {
+  console.log('Received response:');
+  console.log(data.toString());
 });
 
-// Handle errors
-mcpProcess.stderr.on('data', (data) => {
-  console.error(`MCP error: ${data}`);
+pythonProcess.stderr.on('data', (data) => {
+  console.error('Error:');
+  console.error(data.toString());
 });
 
-mcpProcess.on('error', (err) => {
-  console.error('Failed to start MCP process:', err);
+// Send tools list request
+setTimeout(() => {
+  const toolsRequest = {
+    jsonrpc: "2.0",
+    id: 2,
+    method: "tools/list"
+  };
+  
+  console.log('Sending tools list request...');
+  pythonProcess.stdin.write(JSON.stringify(toolsRequest) + '\n');
+}, 1000);
+
+// Handle process termination
+pythonProcess.on('close', (code) => {
+  console.log(`Python process exited with code ${code}`);
+  process.exit(code);
+});
+
+// Handle process termination
+process.on('SIGINT', () => {
+  pythonProcess.kill();
+  process.exit();
 }); 

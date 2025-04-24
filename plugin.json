@@ -1,7 +1,7 @@
 {
   "name": "ncbi-mcp",
-  "version": "1.0.12",
-  "description": "NCBI Entrez MCP adapter for Cursor",
+  "version": "1.0.15",
+  "description": "NCBI Entrez MCP adapter for Cursor and Claude Desktop",
   "connections": [
     {
       "type": "stdio",
@@ -26,5 +26,35 @@
       "enabled": true,
       "level": "info"
     }
-  }
+  },
+  "tools": [
+    {
+      "name": "search_genes",
+      "description": "Search for genes in NCBI databases",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query for genes"
+          }
+        },
+        "required": ["query"]
+      }
+    },
+    {
+      "name": "get_gene_info",
+      "description": "Get detailed information about a specific gene",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "gene_id": {
+            "type": "string",
+            "description": "NCBI Gene ID"
+          }
+        },
+        "required": ["gene_id"]
+      }
+    }
+  ]
 }

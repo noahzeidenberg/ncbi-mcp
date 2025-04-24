@@ -1,12 +1,19 @@
 # Git
 .git
 .gitignore
+.gitattributes
+
+# Node.js
+node_modules
+npm-debug.log
+yarn-debug.log
+yarn-error.log
 
 # Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
+__pycache__
+*.pyc
+*.pyo
+*.pyd
 .Python
 env/
 build/
@@ -24,25 +31,20 @@ var/
 .installed.cfg
 *.egg
 
-# Node
-node_modules/
-npm-debug.log
-yarn-debug.log
-yarn-error.log
-
-# Environment
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
 # IDE
-.idea/
-.vscode/
+.idea
+.vscode
 *.swp
 *.swo
 
 # OS
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# Project specific
+test_ncbi_mcp.py
+test-mcp-prompt.py
+debug-mcp.js
+publish.js
+smithery.yaml
+uv.lock 

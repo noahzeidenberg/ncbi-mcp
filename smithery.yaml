@@ -1,8 +1,9 @@
+# smithery.yaml
 version: 1
 name: ncbi-mcp
 description: NCBI Entrez MCP adapter for Cursor
-author: Your Name
-license: MIT
+author: Noah Zeidenberg
+license: Apache-2.0
 
 build:
   dockerfile: Dockerfile
@@ -14,6 +15,23 @@ runtime:
     PYTHONUNBUFFERED: 1
     PYTHONPATH: /app
 
+# Add this new block:
+connections:
+  cursor:
+    type: stdio
+    configSchema:
+      # No user-config needed, so an empty schema
+      type: object
+      properties: {}
+    commandFunction: |
+      (config) => ({
+        command: "node",
+        args: ["./bin/ncbi-mcp.js"],
+        env: { PYTHONPATH: "${workspaceFolder}" },
+        shell: false
+      })
+
+# Existing MCP definition (optional, for local tooling)
 mcp:
   version: 1
   protocol: json-rpc

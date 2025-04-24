@@ -1,8 +1,9 @@
 /**
- * NCBI MCP for Cursor
- * This is a placeholder file to satisfy the "main" field in package.json
- * The actual functionality is in ncbi-mcp.py and bin/ncbi-mcp.js
+ * NCBI MCP
+ * 
+ * This is the main entry point for the NCBI MCP package.
+ * It exports the NCBIMCP class for use in other packages.
  */
 
-console.log('NCBI MCP for Cursor');
-console.log('Please use the MCP through Cursor or run: npx ncbi-mcp'); 
+// This file is intentionally empty to make the package work as a module.
+// The actual implementation is in src/server.py and bin/ncbi-mcp.js. 
