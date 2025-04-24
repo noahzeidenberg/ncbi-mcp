@@ -1,6 +1,6 @@
 {
   "name": "ncbi-mcp",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "NCBI Entrez MCP adapter for Cursor",
   "main": "index.js",
   "bin": {
@@ -9,7 +9,6 @@
   "scripts": {
     "test": "node test-mcp.js",
     "start": "node bin/ncbi-mcp.js",
-    "publish": "node publish.js",
     "postinstall": "node install-cursor.js"
   },
   "keywords": [
