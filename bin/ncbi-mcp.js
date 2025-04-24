@@ -19,15 +19,58 @@ if (!fs.existsSync(pythonScript)) {
   process.exit(1);
 }
 
+// Initialize MCP protocol
+const initMessage = {
+  protocolVersion: "1.0",
+  capabilities: {
+    resources: {},
+    tools: {
+      "ncbi-search": {
+        description: "Search NCBI databases",
+        parameters: {
+          database: { type: "string", description: "NCBI database to search" },
+          term: { type: "string", description: "Search term" },
+          filters: { type: "object", description: "Optional filters" }
+        }
+      },
+      "ncbi-fetch": {
+        description: "Fetch records from NCBI",
+        parameters: {
+          database: { type: "string", description: "NCBI database" },
+          ids: { type: "array", description: "List of IDs to fetch" }
+        }
+      }
+    }
+  },
+  serverInfo: {
+    name: "ncbi-mcp",
+    version: "1.0.6",
+    description: "NCBI Entrez MCP adapter for Cursor"
+  }
+};
+
+// Send initialization message
+console.log(JSON.stringify(initMessage));
+
 // Spawn the Python process
 const pythonProcess = spawn('python', [pythonScript], {
   stdio: ['pipe', 'pipe', 'pipe']
 });
 
-// Pipe stdin/stdout between Node and Python
-process.stdin.pipe(pythonProcess.stdin);
-pythonProcess.stdout.pipe(process.stdout);
-pythonProcess.stderr.pipe(process.stderr);
+// Handle incoming messages from Python
+pythonProcess.stdout.on('data', (data) => {
+  process.stdout.write(data);
+});
+
+// Handle errors from Python
+pythonProcess.stderr.on('data', (data) => {
+  process.stderr.write(data);
+});
+
+// Pipe stdin to Python
+process.stdin.on('data', (data) => {
+  pythonProcess.stdin.write(data);
+});
 
 // Handle process exit
 pythonProcess.on('close', (code) => {

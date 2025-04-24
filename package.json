@@ -19,7 +19,7 @@
     "bioinformatics"
   ],
   "author": "",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "files": [
     "bin/",
     "*.py",
@@ -44,5 +44,8 @@
   "homepage": "https://github.com/noahzeidenberg/ncbi-mcp#readme",
   "devDependencies": {
     "dotenv": "^16.5.0"
+  },
+  "dependencies": {
+    "ncbi-mcp": "^1.0.7"
   }
 }
