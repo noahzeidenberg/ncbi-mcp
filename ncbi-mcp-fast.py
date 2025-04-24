@@ -9,8 +9,12 @@ from typing import Dict, List, Any, Optional
 from fastmcp import FastMCP, Context
 from ncbi_datasets_client import NCBIDatasetsClient
 
-# Initialize FastMCP server
-mcp = FastMCP("ncbi-mcp")
+# Initialize FastMCP server with proper configuration
+mcp = FastMCP(
+    name="NCBI MCP",
+    instructions="This server provides tools for interacting with NCBI databases.",
+    protocol_version="2.0"
+)
 
 class NCBIClient:
     BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
@@ -104,37 +108,68 @@ def normalize_summary(raw: Dict[str, Any], fields: List[str]) -> List[Dict[str, 
 ncbi_client = NCBIClient()
 
 @mcp.tool()
-async def search(database: str, term: str, filters: Dict[str, Any] = None, 
-                retstart: int = 0, retmax: int = 20, context: Context = None) -> Dict[str, Any]:
-    """Search NCBI databases."""
-    if not database or not term:
-        return {"status": "error", "error": {"message": "Database and search term are required"}}
+async def ncbi_search(database: str, term: str, filters: Optional[Dict[str, Any]] = None, ctx: Context = None) -> Dict[str, Any]:
+    """Search NCBI databases with optional filters."""
+    if ctx:
+        await ctx.info(f"Searching {database} for term: {term}")
+    
+    params = {
+        "db": database,
+        "term": term,
+        "retmode": "json"
+    }
+    
+    if filters:
+        params.update(filters)
     
     try:
-        # Run the request in a thread pool to avoid blocking
-        loop = asyncio.get_running_loop()
-        search_result = await loop.run_in_executor(
-            None,
-            lambda: ncbi_client.esearch(database, term, filters or {}, retstart, retmax)
-        )
-        
-        if "esearchresult" in search_result and "idlist" in search_result["esearchresult"]:
-            ids = search_result["esearchresult"]["idlist"]
-            count = int(search_result["esearchresult"].get("count", 0))
-            
-            return {
-                "status": "ok",
-                "data": [{"id": id} for id in ids],
-                "pagination": {
-                    "count": count,
-                    "retstart": retstart,
-                    "retmax": retmax
-                }
-            }
-        else:
-            return {"status": "error", "error": {"message": "Invalid search result format"}}
+        result = ncbi_client._make_request("esearch.fcgi", params)
+        if ctx:
+            await ctx.info(f"Found {result.get('esearchresult', {}).get('count', 0)} results")
+        return result
     except Exception as e:
-        return {"status": "error", "error": {"message": str(e)}}
+        if ctx:
+            await ctx.error(f"Error searching NCBI: {str(e)}")
+        raise
+
+@mcp.tool()
+async def ncbi_fetch(database: str, ids: List[str], ctx: Context = None) -> Dict[str, Any]:
+    """Fetch records from NCBI using their IDs."""
+    if ctx:
+        await ctx.info(f"Fetching {len(ids)} records from {database}")
+    
+    params = {
+        "db": database,
+        "id": ",".join(ids),
+        "retmode": "json"
+    }
+    
+    try:
+        result = ncbi_client._make_request("efetch.fcgi", params)
+        if ctx:
+            await ctx.info(f"Successfully fetched records")
+        return result
+    except Exception as e:
+        if ctx:
+            await ctx.error(f"Error fetching from NCBI: {str(e)}")
+        raise
+
+@mcp.resource("ncbi://databases")
+async def list_databases(ctx: Context = None) -> List[str]:
+    """List available NCBI databases."""
+    if ctx:
+        await ctx.info("Fetching available NCBI databases")
+    
+    try:
+        result = ncbi_client._make_request("einfo.fcgi", {})
+        databases = result.get("einforesult", {}).get("dblist", [])
+        if ctx:
+            await ctx.info(f"Found {len(databases)} databases")
+        return databases
+    except Exception as e:
+        if ctx:
+            await ctx.error(f"Error listing databases: {str(e)}")
+        raise
 
 @mcp.tool()
 async def summary(database: str, ids: List[str], fields: List[str] = None, context: Context = None) -> Dict[str, Any]:

@@ -11,7 +11,7 @@ const fs = require('fs');
 
 // Get the path to the Python script
 const scriptDir = path.resolve(__dirname, '..');
-const pythonScript = path.join(scriptDir, 'ncbi-mcp.py');
+const pythonScript = path.join(scriptDir, 'ncbi-mcp-fast.py');
 
 // Check if the Python script exists
 if (!fs.existsSync(pythonScript)) {
@@ -48,32 +48,65 @@ const initMessage = {
   id: 1,
   method: "initialize",
   params: {
-    protocol: "mcp",
+    protocolVersion: "2.0",
     capabilities: {
-      resources: {},
+      logging: {
+        level: "info"
+      },
+      prompts: {},
+      resources: {
+        "ncbi://databases": {
+          description: "List available NCBI databases",
+          mimeType: "application/json"
+        }
+      },
       tools: {
         "ncbi-search": {
           description: "Search NCBI databases",
           parameters: {
-            database: { type: "string", description: "NCBI database to search" },
-            term: { type: "string", description: "Search term" },
-            filters: { type: "object", description: "Optional filters" }
+            type: "object",
+            properties: {
+              database: { 
+                type: "string", 
+                description: "NCBI database to search" 
+              },
+              term: { 
+                type: "string", 
+                description: "Search term" 
+              },
+              filters: { 
+                type: "object", 
+                description: "Optional filters",
+                additionalProperties: true
+              }
+            },
+            required: ["database", "term"]
           }
         },
         "ncbi-fetch": {
           description: "Fetch records from NCBI",
           parameters: {
-            database: { type: "string", description: "NCBI database" },
-            ids: { type: "array", description: "List of IDs to fetch" }
+            type: "object",
+            properties: {
+              database: { 
+                type: "string", 
+                description: "NCBI database" 
+              },
+              ids: { 
+                type: "array", 
+                description: "List of IDs to fetch",
+                items: {
+                  type: "string"
+                }
+              }
+            },
+            required: ["database", "ids"]
           }
         }
       }
     }
   }
 };
-
-// Send initialization message
-console.error('Sending init message:', JSON.stringify(initMessage, null, 2));
 
 // Spawn the Python process
 const pythonExecutable = findPythonExecutable();
@@ -82,47 +115,45 @@ const pythonProcess = spawn(pythonExecutable, [pythonScript], {
   stdio: ['pipe', 'pipe', 'pipe']
 });
 
-// Send initialization message to Python process
-pythonProcess.stdin.write(JSON.stringify(initMessage) + '\n');
-
 // Handle incoming messages from Python
 pythonProcess.stdout.on('data', (data) => {
-  console.error('Received from Python stdout:', data.toString());
-  process.stdout.write(data);
+  console.log(data.toString());
 });
 
 // Handle errors from Python
 pythonProcess.stderr.on('data', (data) => {
-  console.error('Received from Python stderr:', data.toString());
-  process.stderr.write(data);
+  console.error(data.toString());
 });
 
-// Pipe stdin to Python
-process.stdin.on('data', (data) => {
-  console.error('Sending to Python:', data.toString());
-  pythonProcess.stdin.write(data);
-});
+// Send initialization message to Python process
+pythonProcess.stdin.write(JSON.stringify(initMessage) + '\n');
 
 // Handle process exit
-pythonProcess.on('close', (code) => {
-  console.error('Python process exited with code:', code);
-  process.exit(code);
+pythonProcess.on('exit', (code) => {
+  if (code !== 0) {
+    console.error(`Python process exited with code ${code}`);
+    process.exit(code);
+  }
 });
 
-// Handle errors
+// Handle process errors
 pythonProcess.on('error', (err) => {
   console.error('Failed to start Python process:', err);
   process.exit(1);
 });
 
-// Handle uncaught exceptions
-process.on('uncaughtException', (err) => {
-  console.error('Uncaught exception:', err);
-  process.exit(1);
+// Forward stdin to Python process
+process.stdin.on('data', (data) => {
+  pythonProcess.stdin.write(data);
 });
 
-// Handle unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled promise rejection:', reason);
-  process.exit(1);
+// Handle process termination
+process.on('SIGINT', () => {
+  pythonProcess.kill('SIGINT');
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  pythonProcess.kill('SIGTERM');
+  process.exit(0);
 });

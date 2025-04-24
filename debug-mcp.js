@@ -48,7 +48,6 @@ const initMessage = {
   id: 1,
   method: "initialize",
   params: {
-    protocol: "mcp",
     capabilities: {
       resources: {},
       tools: {
