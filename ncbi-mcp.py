@@ -9,7 +9,7 @@ from ncbi_datasets_client import NCBIDatasetsClient
 import logging
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 class NCBIClient:
@@ -102,48 +102,25 @@ def normalize_summary(raw: Dict[str, Any], fields: List[str]) -> List[Dict[str, 
 
 class NCBIMCP:
     def __init__(self):
-        self.client = NCBIDatasetsClient()
+        self.client = NCBIClient()
         self.initialized = False
+        logger.debug("NCBIMCP initialized")
 
     def handle_request(self, request: Union[Dict[str, Any], List[Dict[str, Any]]]) -> Union[Dict[str, Any], List[Dict[str, Any]]]:
-        """Handle JSON-RPC 2.0 requests."""
-        try:
-            # Handle batch requests
-            if isinstance(request, list):
-                responses = []
-                for req in request:
-                    response = self._handle_single_request(req)
-                    if response is not None:  # Skip notifications
-                        responses.append(response)
-                return responses if responses else None
-
-            # Handle single request
-            return self._handle_single_request(request)
-
-        except Exception as e:
-            logger.error(f"Error handling request: {str(e)}")
-            return self._error_response(None, -32000, str(e))
+        logger.debug(f"Handling request: {json.dumps(request, indent=2)}")
+        
+        if isinstance(request, list):
+            return [self._handle_single_request(req) for req in request]
+        return self._handle_single_request(request)
 
     def _handle_single_request(self, request: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """Handle a single JSON-RPC 2.0 request."""
         try:
-            # Validate request format
-            if not isinstance(request, dict):
-                return self._error_response(None, -32600, "Invalid Request")
-
-            # Check for required fields
-            if "jsonrpc" not in request or request["jsonrpc"] != "2.0":
-                return self._error_response(None, -32600, "Invalid Request: jsonrpc field missing or invalid")
-
-            if "method" not in request:
-                return self._error_response(None, -32600, "Invalid Request: method field missing")
-
-            # Extract request parameters
             request_id = request.get("id")
-            method = request["method"]
+            method = request.get("method")
             params = request.get("params", {})
 
-            # Handle different methods
+            logger.debug(f"Processing request: method={method}, params={params}")
+
             if method == "initialize":
                 return self._initialize(request_id, params)
             elif method == "tools/list":
@@ -153,111 +130,83 @@ class NCBIMCP:
             elif method == "resources/list":
                 return self._resources_list(request_id)
             else:
-                return self._error_response(request_id, -32601, f"Method {method} not found")
-
+                return self._error_response(request_id, 400, f"Unknown method: {method}")
         except Exception as e:
-            logger.error(f"Error handling request: {str(e)}")
-            return self._error_response(request_id, -32000, str(e))
+            logger.error(f"Error handling request: {str(e)}", exc_info=True)
+            return self._error_response(request.get("id"), 500, str(e))
 
     def _initialize(self, request_id: Optional[Union[str, int]], params: Dict[str, Any]) -> Dict[str, Any]:
-        """Initialize the MCP."""
-        try:
-            # Perform any necessary initialization
-            self.initialized = True
-            return {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "result": {
-                    "capabilities": {
-                        "tools": True,
-                        "resources": True
+        logger.debug("Initializing MCP")
+        self.initialized = True
+        return {
+            "id": request_id,
+            "result": {
+                "status": "ok",
+                "message": "Initialized successfully"
+            }
+        }
+
+    def _tools_list(self, request_id: Optional[Union[str, int]]) -> Dict[str, Any]:
+        logger.debug("Listing tools")
+        return {
+            "id": request_id,
+            "result": {
+                "tools": {
+                    "ncbi-search": {
+                        "description": "Search NCBI databases",
+                        "parameters": {
+                            "database": {"type": "string", "description": "NCBI database to search"},
+                            "term": {"type": "string", "description": "Search term"},
+                            "filters": {"type": "object", "description": "Optional filters"}
+                        }
+                    },
+                    "ncbi-fetch": {
+                        "description": "Fetch records from NCBI",
+                        "parameters": {
+                            "database": {"type": "string", "description": "NCBI database"},
+                            "ids": {"type": "array", "description": "List of IDs to fetch"}
+                        }
                     }
                 }
             }
-        except Exception as e:
-            return self._error_response(request_id, -32000, str(e))
-
-    def _tools_list(self, request_id: Optional[Union[str, int]]) -> Dict[str, Any]:
-        """List available tools."""
-        tools = [
-            {
-                "name": "search_genes",
-                "description": "Search for genes in NCBI databases",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "Search query for genes"
-                        }
-                    },
-                    "required": ["query"]
-                }
-            },
-            {
-                "name": "get_gene_info",
-                "description": "Get detailed information about a specific gene",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "gene_id": {
-                            "type": "string",
-                            "description": "NCBI Gene ID"
-                        }
-                    },
-                    "required": ["gene_id"]
-                }
-            }
-        ]
-        return {
-            "jsonrpc": "2.0",
-            "id": request_id,
-            "result": {"tools": tools}
         }
 
     def _tools_call(self, request_id: Optional[Union[str, int]], params: Dict[str, Any]) -> Dict[str, Any]:
-        """Call a specific tool."""
-        try:
-            tool_name = params.get("name")
-            tool_params = params.get("parameters", {})
+        logger.debug(f"Calling tool with params: {params}")
+        tool = params.get("tool")
+        tool_params = params.get("params", {})
 
-            if not tool_name:
-                return self._error_response(request_id, -32602, "Invalid params: name is required")
+        if tool == "ncbi-search":
+            result = self.client.esearch(
+                database=tool_params["database"],
+                term=tool_params["term"],
+                filters=tool_params.get("filters", {})
+            )
+        elif tool == "ncbi-fetch":
+            result = self.client.efetch(
+                database=tool_params["database"],
+                ids=tool_params["ids"]
+            )
+        else:
+            return self._error_response(request_id, 400, f"Unknown tool: {tool}")
 
-            if tool_name == "search_genes":
-                result = self.client.search_genes(tool_params.get("query"))
-            elif tool_name == "get_gene_info":
-                result = self.client.get_gene_info(tool_params.get("gene_id"))
-            else:
-                return self._error_response(request_id, -32601, f"Tool {tool_name} not found")
-
-            return {
-                "jsonrpc": "2.0",
-                "id": request_id,
-                "result": result
-            }
-        except Exception as e:
-            return self._error_response(request_id, -32000, str(e))
+        return {
+            "id": request_id,
+            "result": result
+        }
 
     def _resources_list(self, request_id: Optional[Union[str, int]]) -> Dict[str, Any]:
-        """List available resources."""
-        resources = [
-            {
-                "name": "ncbi_datasets",
-                "description": "NCBI Datasets API",
-                "type": "api"
-            }
-        ]
+        logger.debug("Listing resources")
         return {
-            "jsonrpc": "2.0",
             "id": request_id,
-            "result": {"resources": resources}
+            "result": {
+                "resources": {}
+            }
         }
 
     def _error_response(self, request_id: Optional[Union[str, int]], code: int, message: str) -> Dict[str, Any]:
-        """Generate error response."""
+        logger.error(f"Error: {message}")
         return {
-            "jsonrpc": "2.0",
             "id": request_id,
             "error": {
                 "code": code,
@@ -266,48 +215,30 @@ class NCBIMCP:
         }
 
 def main():
-    """Main entry point for the MCP."""
+    logger.debug("Starting NCBI MCP server")
     mcp = NCBIMCP()
     
-    # Read input from stdin
     while True:
         try:
             line = sys.stdin.readline()
             if not line:
                 break
-
+                
             request = json.loads(line)
-            response = mcp.handle_request(request)
+            logger.debug(f"Received request: {json.dumps(request, indent=2)}")
             
-            # Write response to stdout (skip notifications)
-            if response is not None:
-                sys.stdout.write(json.dumps(response) + "\n")
+            response = mcp.handle_request(request)
+            if response:
+                logger.debug(f"Sending response: {json.dumps(response, indent=2)}")
+                print(json.dumps(response))
                 sys.stdout.flush()
-
-        except json.JSONDecodeError:
-            logger.error("Invalid JSON received")
-            error_response = {
-                "jsonrpc": "2.0",
-                "error": {
-                    "code": -32700,
-                    "message": "Parse error"
-                },
-                "id": None
-            }
-            sys.stdout.write(json.dumps(error_response) + "\n")
-            sys.stdout.flush()
+                
+        except json.JSONDecodeError as e:
+            logger.error(f"Error decoding JSON: {str(e)}")
+            continue
         except Exception as e:
-            logger.error(f"Error: {str(e)}")
-            error_response = {
-                "jsonrpc": "2.0",
-                "error": {
-                    "code": -32000,
-                    "message": str(e)
-                },
-                "id": None
-            }
-            sys.stdout.write(json.dumps(error_response) + "\n")
-            sys.stdout.flush()
+            logger.error(f"Unexpected error: {str(e)}", exc_info=True)
+            continue
 
 if __name__ == "__main__":
     main()

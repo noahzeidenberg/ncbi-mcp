@@ -44,36 +44,41 @@ const initMessage = {
   },
   serverInfo: {
     name: "ncbi-mcp",
-    version: "1.0.6",
+    version: "1.0.7",
     description: "NCBI Entrez MCP adapter for Cursor"
   }
 };
 
 // Send initialization message
+console.error('Sending init message:', JSON.stringify(initMessage, null, 2));
 console.log(JSON.stringify(initMessage));
 
 // Spawn the Python process
-const pythonProcess = spawn('python', [pythonScript], {
+const pythonProcess = spawn('python3', [pythonScript], {
   stdio: ['pipe', 'pipe', 'pipe']
 });
 
 // Handle incoming messages from Python
 pythonProcess.stdout.on('data', (data) => {
+  console.error('Received from Python stdout:', data.toString());
   process.stdout.write(data);
 });
 
 // Handle errors from Python
 pythonProcess.stderr.on('data', (data) => {
+  console.error('Received from Python stderr:', data.toString());
   process.stderr.write(data);
 });
 
 // Pipe stdin to Python
 process.stdin.on('data', (data) => {
+  console.error('Sending to Python:', data.toString());
   pythonProcess.stdin.write(data);
 });
 
 // Handle process exit
 pythonProcess.on('close', (code) => {
+  console.error('Python process exited with code:', code);
   process.exit(code);
 });
 
