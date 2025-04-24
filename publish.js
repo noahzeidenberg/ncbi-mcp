@@ -52,6 +52,18 @@ try {
   process.exit(1);
 }
 
+// Check if version already exists on npm
+try {
+  const npmVersion = execSync(`npm view ${packageJson.name} version`, { stdio: 'pipe' }).toString().trim();
+  if (npmVersion === packageJson.version) {
+    console.error(`Error: Version ${packageJson.version} already exists on npm. Please increment the version in package.json before publishing.`);
+    process.exit(1);
+  }
+} catch (error) {
+  // Package doesn't exist yet, which is fine
+  console.log('Package does not exist on npm yet, proceeding with publish...');
+}
+
 // Create git tag if it doesn't exist
 const version = packageJson.version;
 try {
