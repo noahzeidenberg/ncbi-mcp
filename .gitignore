@@ -40,3 +40,4 @@ temp/
 *.log
 temp_*.jsonl
 =* 
+modelcontextprotocol/
