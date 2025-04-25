@@ -1,49 +1,28 @@
 {
   "name": "ncbi-mcp",
-  "version": "1.0.15",
-  "description": "NCBI Entrez MCP adapter for Cursor and Claude Desktop",
-  "main": "index.js",
-  "bin": {
-    "ncbi-mcp": "./bin/ncbi-mcp.js"
-  },
-  "scripts": {
-    "test": "node test-mcp.js",
-    "start": "node bin/ncbi-mcp.js"
-  },
-  "keywords": [
-    "ncbi",
-    "entrez",
-    "mcp",
-    "cursor",
-    "claude",
-    "bioinformatics"
-  ],
-  "author": "",
+  "version": "1.0.0",
+  "description": "Model Context Protocol (MCP) server that integrates NCBI Entrez capabilities.",
   "license": "Apache-2.0",
+  "type": "module",
+  "main": "ncbi-mcp.py",
+  "bin": {
+    "ncbi-mcp": "ncbi-mcp.py"
+  },
   "files": [
-    "bin/",
-    "src/",
-    "*.json",
-    "*.js",
-    "README.md",
-    "requirements.txt",
+    "ncbi-mcp.py",
+    "ncbi_datasets_client.py",
     "smithery.yaml"
   ],
-  "engines": {
-    "node": ">=14.0.0"
+  "scripts": {
+    "start": "python ncbi-mcp.py",
+    "inspect": "smithery inspect ."
   },
-  "publishConfig": {
-    "access": "public"
+  "dependencies": {
+    "modelcontextprotocol": "^1.0.0",
+    "requests": "^2.31.0"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/noahzeidenberg/ncbi-mcp.git"
-  },
-  "bugs": {
-    "url": "https://github.com/noahzeidenberg/ncbi-mcp/issues"
-  },
-  "homepage": "https://github.com/noahzeidenberg/ncbi-mcp#readme",
   "devDependencies": {
-    "dotenv": "^16.5.0"
+    "@types/node": "^20.11.24",
+    "typescript": "^5.3.3"
   }
 }

@@ -15,25 +15,12 @@ runtime:
     PYTHONUNBUFFERED: 1
     PYTHONPATH: /app
 
-# startCommand (alternative to connections:)
-startCommand:
-  type: stdio
-  configSchema:
-    type: object
-    properties: {}
-  commandFunction: |
-    (config) => ({
-      command: "node",
-      args: ["./bin/ncbi-mcp.js"],
-      env: { PYTHONPATH: "${workspaceFolder}" }
-    })
-
 # Existing MCP definition (optional, for local tooling)
 mcp:
   version: 1
   protocol: json-rpc
   protocol_version: 2.0
-  entrypoint: ncbi-mcp.py
+  entrypoint: ncbi_mcp.py
   capabilities:
     - tools
     - resources
@@ -43,19 +30,41 @@ mcp:
     error: stderr
 
 tools:
-  - name: search_genes
+  - name: ncbi-search
     description: Search for genes in NCBI databases
     parameters:
       type: object
       properties:
-        query:
+        database:
           type: string
-          description: Search query for genes
+          description: NCBI database to search
+        term:
+          type: string
+          description: Search query
+        filters:
+          type: object
+          description: Optional filters for the search
       required:
-        - query
+        - database
+        - term
+
+  - name: ncbi-fetch
+    description: Get detailed information about a specific gene or genome
+    parameters:
+      type: object
+      properties:
+        database:
+          type: string
+          description: NCBI database
+        ids:
+          type: array
+          description: List of NCBI IDs to fetch
+      required:
+        - database
+        - ids
 
   - name: get_gene_info
-    description: Get detailed information about a specific gene
+    description: Get detailed information about a specific gene using datasets.exe
     parameters:
       type: object
       properties:
@@ -64,6 +73,20 @@ tools:
           description: NCBI Gene ID
       required:
         - gene_id
+
+  - name: get_genome_info
+    description: Get detailed information about a specific genome using datasets.exe
+    parameters:
+      type: object
+      properties:
+        organism:
+          type: string
+          description: Taxonomic name or NCBI TaxonomyID
+        reference:
+          type: boolean
+          description: Limit to reference genomes
+      required:
+        - organism
 
 resources:
   - name: ncbi_datasets

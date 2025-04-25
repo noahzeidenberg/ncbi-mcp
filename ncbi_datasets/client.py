@@ -281,6 +281,9 @@ class NCBIDatasetsClient:
             if tax_exact_match:
                 command.append("--tax-exact-match")
             
+            # Log at INFO level
+            logging.info(f"Getting genome metadata for {organism}")
+            
             result = subprocess.run(
                 command,
                 capture_output=True,
@@ -288,11 +291,18 @@ class NCBIDatasetsClient:
                 encoding='utf-8',
                 check=True
             )
-            response = json.loads(result.stdout)
-            return self._parse_response(response, 'genome')
+            
+            try:
+                response = json.loads(result.stdout)
+                return self._parse_response(response, 'genome')
+            except json.JSONDecodeError as e:
+                logging.error(f"Failed to parse JSON: {e}")
+                return {"error": "Failed to parse response", "details": str(e)}
         except subprocess.SubprocessError as e:
-            print(f"Error getting genome metadata: {e}")
-            return None
+            logging.error(f"Error getting genome metadata: {e}")
+            if hasattr(e, 'stderr'):
+                logging.error(f"STDERR: {e.stderr}")
+            return {"error": "Subprocess error", "details": str(e)}
     
     def get_genome_assembly(self, assembly_accession, report="genome", assembly_source="all",
                           assembly_version="latest", exclude_atypical=False, exclude_multi_isolate=False,
@@ -401,8 +411,9 @@ class NCBIDatasetsClient:
                 command.extend(["--api-key", api_key])
             if debug:
                 command.append("--debug")
-            
-            print(f"\nDEBUG: Running command: {' '.join(command)}")
+                
+            # Log at INFO level
+            logging.info(f"Getting gene metadata for gene ID {gene_id}")
             
             result = subprocess.run(
                 command,
@@ -412,29 +423,17 @@ class NCBIDatasetsClient:
                 check=True
             )
             
-            print(f"DEBUG: Command stdout: {result.stdout}")
-            if result.stderr:
-                print(f"DEBUG: Command stderr: {result.stderr}")
-            
-            # Parse the response
-            response = json.loads(result.stdout)
-            print(f"DEBUG: Parsed response: {json.dumps(response, indent=2)}")
-            
-            # Check for error status
-            if isinstance(response, dict) and response.get('status') == 'error':
-                error_msg = response.get('error', {}).get('message', 'Unknown error')
-                raise ValueError(f"NCBI Datasets API error: {error_msg}")
-            
-            # Return the full response for proper parsing in the calling code
-            return response
-            
+            try:
+                response = json.loads(result.stdout)
+                return self._parse_response(response, 'gene')
+            except json.JSONDecodeError as e:
+                logging.error(f"Failed to parse JSON: {e}")
+                return {"error": "Failed to parse response", "details": str(e)}
         except subprocess.SubprocessError as e:
-            print(f"Error getting gene metadata: {e}")
-            return None
-        except json.JSONDecodeError as e:
-            print(f"Error parsing JSON response: {e}")
-            print(f"Raw output: {result.stdout}")
-            return None
+            logging.error(f"Error getting gene metadata: {e}")
+            if hasattr(e, 'stderr'):
+                logging.error(f"STDERR: {e.stderr}")
+            return {"error": "Subprocess error", "details": str(e)}
     
     def get_gene_by_symbol(self, symbol, taxon="human", report="complete", limit="all", ortholog=None):
         """Get gene metadata by symbol and taxon.

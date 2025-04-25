@@ -15,6 +15,7 @@ build/
 .coverage
 htmlcov/
 .pytest_cache/
+uv.lock
 
 # Node.js
 node_modules/
@@ -32,7 +33,10 @@ yarn-error.log*
 *.swp
 *.swo
 .DS_Store
+.cursor/
 
 # Project specific
 temp/
-*.log 
+*.log
+temp_*.jsonl
+=* 

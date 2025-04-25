@@ -2,6 +2,7 @@
 .git
 .gitignore
 .gitattributes
+.github/
 
 # Node.js
 node_modules
@@ -30,12 +31,18 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
 
 # IDE
 .idea
 .vscode
 *.swp
 *.swo
+.cursor/
 
 # OS
 .DS_Store
@@ -43,8 +50,11 @@ Thumbs.db
 
 # Project specific
 test_ncbi_mcp.py
-test-mcp-prompt.py
+test_*.py
+test_*.jsonl
+temp_*.jsonl
 debug-mcp.js
 publish.js
 smithery.yaml
-uv.lock 
+uv.lock
+=* 
