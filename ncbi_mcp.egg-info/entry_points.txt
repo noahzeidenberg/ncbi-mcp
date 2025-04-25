@@ -1,0 +1,2 @@
+[console_scripts]
+ncbi-mcp = ncbi_mcp:main

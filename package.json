@@ -4,22 +4,23 @@
   "description": "Model Context Protocol (MCP) server that integrates NCBI Entrez capabilities.",
   "license": "Apache-2.0",
   "type": "module",
-  "main": "ncbi-mcp.py",
+  "main": "ncbi_mcp.py",
   "bin": {
-    "ncbi-mcp": "ncbi-mcp.py"
+    "ncbi-mcp": "ncbi_mcp.py"
   },
   "files": [
-    "ncbi-mcp.py",
-    "ncbi_datasets_client.py",
-    "smithery.yaml"
+    "ncbi_mcp.py",
+    "ncbi_client.py",
+    "ncbi_datasets/",
+    "smithery.yaml",
+    "requirements.txt"
   ],
   "scripts": {
-    "start": "python ncbi-mcp.py",
+    "start": "python ncbi_mcp.py",
     "inspect": "smithery inspect ."
   },
   "dependencies": {
-    "modelcontextprotocol": "^1.0.0",
-    "requests": "^2.31.0"
+    "@modelcontextprotocol/sdk": "1.6.1"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",

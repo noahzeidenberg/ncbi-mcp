@@ -1,0 +1,28 @@
+Metadata-Version: 2.4
+Name: ncbi-mcp
+Version: 1.0.0
+Summary: NCBI Model Context Protocol (MCP) adapter for Cursor and Claude Desktop
+Home-page: https://github.com/noahz/ncbi-mcp
+Author: Noah Zeidenberg
+Author-email: noah.zeidenberg@example.com
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Topic :: Scientific/Engineering :: Bio-Informatics
+Requires-Python: >=3.8
+License-File: LICENSE
+Requires-Dist: modelcontextprotocol>=0.1.0
+Requires-Dist: requests>=2.31.0
+Requires-Dist: python-dotenv>=0.19.0
+Requires-Dist: argparse>=1.4.0
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: home-page
+Dynamic: license-file
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary

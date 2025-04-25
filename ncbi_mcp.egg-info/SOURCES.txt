@@ -1,0 +1,11 @@
+LICENSE
+README.md
+setup.py
+ncbi_datasets/__init__.py
+ncbi_datasets/client.py
+ncbi_mcp.egg-info/PKG-INFO
+ncbi_mcp.egg-info/SOURCES.txt
+ncbi_mcp.egg-info/dependency_links.txt
+ncbi_mcp.egg-info/entry_points.txt
+ncbi_mcp.egg-info/requires.txt
+ncbi_mcp.egg-info/top_level.txt

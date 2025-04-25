@@ -9,7 +9,6 @@ venv/
 .venv
 env/
 ENV/
-*.egg-info/
 dist/
 build/
 .coverage
@@ -38,6 +37,5 @@ yarn-error.log*
 # Project specific
 temp/
 *.log
-temp_*.jsonl
-=* 
+*.jsonl
 modelcontextprotocol/
