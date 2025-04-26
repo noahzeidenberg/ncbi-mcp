@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="ncbi-mcp",
-    version="1.0.0",
+    version="0.1.0",
     description="NCBI Model Context Protocol (MCP) adapter for Cursor and Claude Desktop",
     author="Noah Zeidenberg",
     author_email="happyomics@gmail.com",
