@@ -1,108 +1,164 @@
-# NCBI-MCP - NCBI Model Context Protocol
+# NCBI Model Context Protocol (MCP)
 
-A Model Context Protocol (MCP) implementation for accessing NCBI databases and tools.
+A Python implementation of the Model Context Protocol for interacting with NCBI databases.
 
-## Features
-
-- Query NCBI databases (PubMed, Gene, Protein, etc.)
-- Retrieve gene information and summaries
-- Analyze gene lists and relationships
-- Access NCBI Datasets API
-
-## Installation
-
-### For Cursor
-
-```bash
-npm install -g ncbi-mcp
-```
-
-After installation, restart Cursor and go to Settings > Extensions. Add the MCP with the command: `ncbi-mcp`
-
-### For Claude Desktop
+## Setup
 
 1. Clone this repository
-2. Add the following to your Claude Desktop configuration file:
+2. Install dependencies:
+   ```
+   pip install -r requirements.txt
+   ```
+3. Create a `.env` file with your NCBI API key:
+   ```
+   NCBI_API_KEY=your_api_key_here
+   NCBI_EMAIL=your_email@example.com
+   ```
 
-#### On macOS:
-`~/Library/Application Support/Claude/claude_desktop_config.json`
+## Running the MCP Server
 
-#### On Windows:
-`%APPDATA%/Claude/claude_desktop_config.json`
+```
+python ncbi_mcp.py
+```
 
-```json
+## Using with Cursor/Claude
+
+Once the MCP server is running, you can interact with it using natural language in Cursor/Claude.
+
+### Using Natural Language Queries
+
+You can use natural language to perform searches and retrieve information:
+
+```
+tools/call
 {
-  "mcpServers": {
-    "ncbi-mcp": {
-      "command": "python",
-      "args": [
-        "ncbi_mcp.py",
-        "--api-key",
-        "YOUR_NCBI_API_KEY",
-        "--email",
-        "YOUR_EMAIL"
-      ],
-      "env": {
-        "PYTHONPATH": "PATH_TO_NCBI_MCP_DIRECTORY"
+  "name": "nlp-query",
+  "arguments": {
+    "query": "Find research articles about BRCA1"
+  }
+}
+```
+
+Or more simply, just use the query directly:
+
+```
+@ncbi-mcp Find research articles about BRCA1
+```
+
+### Example Queries
+
+Here are some example queries you can try:
+
+1. Search for scientific articles:
+   ```
+   @ncbi-mcp Find the latest research on COVID-19 vaccines
+   ```
+
+2. Get gene information:
+   ```
+   @ncbi-mcp Tell me about the BRCA1 gene
+   ```
+
+3. Fetch genome information:
+   ```
+   @ncbi-mcp Get genome information for Homo sapiens
+   ```
+
+4. Fetch a specific record:
+   ```
+   @ncbi-mcp Get gene ID 70
+   ```
+
+## Testing
+
+To test the MCP server with various queries, you can use the included test files:
+
+```
+# Test natural language query functionality (default)
+.\run_test.bat
+
+# Test all tools
+.\run_test.bat all
+
+# Test specific test file
+.\run_test.bat test_all_tools.jsonl
+```
+
+The test script will:
+1. Start the MCP server in background
+2. Send test requests from the specified file
+3. Wait for a few seconds to allow processing
+4. Terminate the server and display the output
+
+This approach is used because the MCP server is designed to run continuously as a service. For manual testing without automatic termination, you can use:
+
+```
+# Run manually with any test file
+type test_nlp_query.jsonl | python ncbi_mcp.py
+```
+
+The test files contain example JSON-RPC requests that simulate how Cursor/Claude would interact with the MCP server.
+
+## Advanced Usage
+
+For more advanced usage, you can directly call the specific tools:
+
+### Search NCBI Databases
+
+```
+tools/call
+{
+  "name": "ncbi-search",
+  "arguments": {
+    "database": "pubmed",
+    "term": "BRCA1",
+    "filters": {
+      "organism": "Homo sapiens",
+      "date_range": {
+        "start": "2020"
       }
     }
   }
 }
 ```
 
-Replace `PATH_TO_NCBI_MCP_DIRECTORY` with the absolute path to the directory where you cloned this repository.
-
-### Setting up Environment Variables
-
-This package requires an NCBI API key. You can provide this key in two ways:
-
-1. **Command line arguments** (as shown in the Claude Desktop configuration above)
-2. **Environment variables** using a `.env` file in the root directory of the package:
+### Fetch NCBI Records
 
 ```
-# .env file
-NCBI_API_KEY=your_api_key_here
-NCBI_EMAIL=your_email_here
+tools/call
+{
+  "name": "ncbi-fetch",
+  "arguments": {
+    "database": "gene",
+    "ids": ["70"],
+    "rettype": "gb"
+  }
+}
 ```
 
-To obtain an NCBI API key:
-1. Register for an NCBI account at https://www.ncbi.nlm.nih.gov/
-2. Get your API key from https://www.ncbi.nlm.nih.gov/account/settings/
+### Get Gene Information
 
-## Usage
-
-Once installed, you can use the NCBI MCP in your conversations with Claude or Cursor. The MCP provides the following tools:
-
-- `ncbi-search`: Search NCBI databases
-- `ncbi-fetch`: Fetch records from NCBI
-- `get_gene_info`: Get detailed information about a specific gene
-- `get_genome_info`: Get detailed information about a specific genome
-
-## Development
-
-### Prerequisites
-
-- Python 3.8+
-- Node.js 14+
-- NCBI Datasets CLI tools (for some advanced features)
-
-### Setup
-
-1. Clone this repository
-2. Install dependencies:
-
-```bash
-# Install Python dependencies
-pip install -r requirements.txt
+```
+tools/call
+{
+  "name": "get_gene_info",
+  "arguments": {
+    "gene_id": "672"
+  }
+}
 ```
 
-3. Set up your .env file with your NCBI credentials as described above
+### Get Genome Information
 
-### Testing
-
-```bash
-# Test the MCP server
-python test_ncbi_mcp.py
+```
+tools/call
+{
+  "name": "get_genome_info",
+  "arguments": {
+    "organism": "Homo sapiens",
+    "reference": true
+  }
+}
 ```
 
 ## License

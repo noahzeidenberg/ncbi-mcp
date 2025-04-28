@@ -22,6 +22,36 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+class NCBIDatasetsClient:
+    """Simple client for accessing NCBI Datasets API"""
+    
+    def __init__(self):
+        self.base_url = "https://api.ncbi.nlm.nih.gov/datasets/v2alpha"
+        self.session = requests.Session()
+    
+    def get_gene_metadata(self, gene_id: str) -> Dict[str, Any]:
+        """Get metadata for a specific gene."""
+        url = f"{self.base_url}/gene/id/{gene_id}"
+        try:
+            response = self.session.get(url)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error fetching gene metadata: {str(e)}")
+            return {"error": str(e)}
+    
+    def get_genome_metadata(self, organism: str, reference: bool = False) -> Dict[str, Any]:
+        """Get metadata for genomes matching an organism name."""
+        url = f"{self.base_url}/genome/organism/{organism}"
+        params = {"reference_only": "true" if reference else "false"}
+        try:
+            response = self.session.get(url, params=params)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"Error fetching genome metadata: {str(e)}")
+            return {"error": str(e)}
+
 class NCBIClient:
     BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
     
@@ -137,89 +167,137 @@ class NCBIMCP:
         async def handle_call_tool(name: str, arguments: Dict[str, Any] | None) -> List[TextContent]:
             return await self._handle_tool_call(name, arguments)
 
-    def _get_tools(self) -> List[Tool]:
-        return [
-            {
-                "name": "ncbi-search",
-                "description": "Search NCBI databases",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "database": {
-                            "type": "string",
-                            "description": "NCBI database to search"
-                        },
-                        "term": {
-                            "type": "string",
-                            "description": "Search term"
-                        },
-                        "filters": {
-                            "type": "object",
-                            "description": "Optional filters"
-                        }
-                    },
-                    "required": ["database", "term"]
-                }
-            },
-            {
-                "name": "ncbi-fetch",
-                "description": "Fetch records from NCBI",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "database": {
-                            "type": "string",
-                            "description": "NCBI database"
-                        },
-                        "ids": {
-                            "type": "array",
-                            "description": "List of IDs to fetch"
-                        },
-                        "rettype": {
-                            "type": "string",
-                            "description": "Return type (gb, fasta, etc.)",
-                            "default": "gb"
-                        }
-                    },
-                    "required": ["database", "ids"]
-                }
-            },
-            {
-                "name": "get_gene_info",
-                "description": "Get detailed information about a specific gene using datasets.exe",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "gene_id": {
-                            "type": "string",
-                            "description": "NCBI Gene ID"
-                        }
-                    },
-                    "required": ["gene_id"]
-                }
-            },
-            {
-                "name": "get_genome_info",
-                "description": "Get detailed information about a specific genome using datasets.exe",
-                "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                        "organism": {
-                            "type": "string",
-                            "description": "Taxonomic name or NCBI TaxonomyID"
-                        },
-                        "reference": {
-                            "type": "boolean",
-                            "description": "Limit to reference genomes"
-                        }
-                    },
-                    "required": ["organism"]
-                }
-            }
-        ]
-
     async def _handle_tool_call(self, name: str, arguments: Dict[str, Any] | None) -> List[TextContent]:
-        if name == "ncbi-search":
+        if name == "nlp-query":
+            query = arguments["query"].lower()
+            
+            # Simple pattern matching to determine intent
+            result = {}
+            
+            if any(term in query for term in ["article", "paper", "research", "publication", "pubmed"]):
+                # PubMed search
+                search_term = query.replace("find", "").replace("research articles about", "").replace("papers on", "").strip()
+                result = self.http_client.esearch(
+                    database="pubmed",
+                    term=search_term,
+                    filters={}
+                )
+                return [
+                    TextContent(
+                        type="text",
+                        text=f"Searching PubMed for: {search_term}\n\n" + json.dumps(result, indent=2)
+                    )
+                ]
+            
+            elif any(term in query for term in ["gene", "genes"]):
+                if "information" in query or "details" in query:
+                    # Extract gene name or ID
+                    gene_terms = ["gene", "information", "details", "about", "the", "get"]
+                    search_term = query
+                    for term in gene_terms:
+                        search_term = search_term.replace(term, "").strip()
+                    
+                    # First try to find the gene ID
+                    search_result = self.http_client.esearch(
+                        database="gene",
+                        term=search_term,
+                        filters={}
+                    )
+                    
+                    if "esearchresult" in search_result and int(search_result["esearchresult"].get("count", 0)) > 0:
+                        gene_id = search_result["esearchresult"]["idlist"][0]
+                        try:
+                            result = self.datasets_client.get_gene_metadata(
+                                gene_id=gene_id
+                            )
+                            result_json = json.dumps(result, indent=2)
+                            return [
+                                TextContent(
+                                    type="text",
+                                    text=f"Found gene information for: {search_term} (ID: {gene_id})\n\n{result_json}"
+                                )
+                            ]
+                        except Exception as e:
+                            return [
+                                TextContent(
+                                    type="text",
+                                    text=f"Found gene ID {gene_id}, but couldn't get detailed information: {str(e)}\n\nBasic search results:\n{json.dumps(search_result, indent=2)}"
+                                )
+                            ]
+                    else:
+                        return [
+                            TextContent(
+                                type="text",
+                                text=f"Couldn't find a gene matching: {search_term}\n\nSearch results:\n{json.dumps(search_result, indent=2)}"
+                            )
+                        ]
+                else:
+                    # General gene search
+                    search_term = query.replace("find", "").replace("genes", "gene").replace("gene", "").strip()
+                    result = self.http_client.esearch(
+                        database="gene",
+                        term=search_term,
+                        filters={}
+                    )
+                    return [
+                        TextContent(
+                            type="text",
+                            text=f"Searching gene database for: {search_term}\n\n" + json.dumps(result, indent=2)
+                        )
+                    ]
+                    
+            elif any(term in query for term in ["genome", "genomes", "species", "organism"]):
+                # Extract organism name
+                org_terms = ["genome", "genomes", "information", "about", "the", "get", "organism", "species", "for"]
+                search_term = query
+                for term in org_terms:
+                    search_term = search_term.replace(term, "").strip()
+                
+                try:
+                    result = self.datasets_client.get_genome_metadata(
+                        organism=search_term,
+                        reference=False
+                    )
+                    
+                    if result is None:
+                        return [
+                            TextContent(
+                                type="text",
+                                text=f"No genome information found for: {search_term}"
+                            )
+                        ]
+                    
+                    result_json = json.dumps(result, indent=2)
+                    return [
+                        TextContent(
+                            type="text",
+                            text=f"Found genome information for: {search_term}\n\n{result_json}"
+                        )
+                    ]
+                except Exception as e:
+                    return [
+                        TextContent(
+                            type="text",
+                            text=f"Error retrieving genome information for {search_term}: {str(e)}"
+                        )
+                    ]
+            
+            else:
+                # Default to a general search if intent is unclear
+                search_term = query
+                result = self.http_client.esearch(
+                    database="pubmed",
+                    term=search_term,
+                    filters={}
+                )
+                return [
+                    TextContent(
+                        type="text",
+                        text=f"Performing general search for: {search_term}\n\n" + json.dumps(result, indent=2)
+                    )
+                ]
+        
+        elif name == "ncbi-search":
             result = self.http_client.esearch(
                 database=arguments["database"],
                 term=arguments["term"],
@@ -270,9 +348,14 @@ class NCBIMCP:
                 ]
         elif name == "get_genome_info":
             try:
+                # Parse the reference parameter to handle string values
+                reference = arguments.get("reference", False)
+                if isinstance(reference, str):
+                    reference = reference.lower() == "true"
+                    
                 result = self.datasets_client.get_genome_metadata(
                     organism=arguments["organism"],
-                    reference=arguments.get("reference", False)
+                    reference=reference
                 )
                 
                 # Handle the result, which might be a complex object
@@ -318,6 +401,182 @@ class NCBIMCP:
                     text=result
                 )
             ]
+
+    def _get_tools(self) -> List[Tool]:
+        return [
+            {
+                "name": "nlp-query",
+                "description": "Translate natural language queries to appropriate NCBI tool calls",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Natural language query about NCBI data"
+                        }
+                    },
+                    "required": ["query"]
+                },
+                "examples": [
+                    {
+                        "example": "Find research articles about COVID-19 vaccines",
+                        "arguments": {
+                            "query": "Find research articles about COVID-19 vaccines"
+                        }
+                    },
+                    {
+                        "example": "Get information about the BRCA1 gene",
+                        "arguments": {
+                            "query": "Get information about the BRCA1 gene"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "ncbi-search",
+                "description": "Search NCBI databases",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "database": {
+                            "type": "string",
+                            "description": "NCBI database to search"
+                        },
+                        "term": {
+                            "type": "string",
+                            "description": "Search term"
+                        },
+                        "filters": {
+                            "type": "object",
+                            "description": "Optional filters"
+                        }
+                    },
+                    "required": ["database", "term"]
+                },
+                "examples": [
+                    {
+                        "example": "Search for BRCA1 in PubMed",
+                        "arguments": {
+                            "database": "pubmed",
+                            "term": "BRCA1",
+                            "filters": {}
+                        }
+                    },
+                    {
+                        "example": "Find E. coli genes",
+                        "arguments": {
+                            "database": "gene",
+                            "term": "Escherichia coli",
+                            "filters": {
+                                "organism": "Escherichia coli"
+                            }
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "ncbi-fetch",
+                "description": "Fetch records from NCBI",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "database": {
+                            "type": "string",
+                            "description": "NCBI database"
+                        },
+                        "ids": {
+                            "type": "array",
+                            "description": "List of IDs to fetch"
+                        },
+                        "rettype": {
+                            "type": "string",
+                            "description": "Return type (gb, fasta, etc.)",
+                            "default": "gb"
+                        }
+                    },
+                    "required": ["database", "ids"]
+                },
+                "examples": [
+                    {
+                        "example": "Get gene 70 from NCBI",
+                        "arguments": {
+                            "database": "gene",
+                            "ids": ["70"]
+                        }
+                    },
+                    {
+                        "example": "Retrieve FASTA sequence for nucleotide ID NM_001126114.3",
+                        "arguments": {
+                            "database": "nucleotide",
+                            "ids": ["NM_001126114.3"],
+                            "rettype": "fasta"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "get_gene_info",
+                "description": "Get detailed information about a specific gene using datasets.exe",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "gene_id": {
+                            "type": "string",
+                            "description": "NCBI Gene ID"
+                        }
+                    },
+                    "required": ["gene_id"]
+                },
+                "examples": [
+                    {
+                        "example": "Get detailed information about the BRCA1 gene (ID: 672)",
+                        "arguments": {
+                            "gene_id": "672"
+                        }
+                    },
+                    {
+                        "example": "Show me information about TP53 gene (ID: 7157)",
+                        "arguments": {
+                            "gene_id": "7157"
+                        }
+                    }
+                ]
+            },
+            {
+                "name": "get_genome_info",
+                "description": "Get detailed information about a specific genome using datasets.exe",
+                "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                        "organism": {
+                            "type": "string",
+                            "description": "Taxonomic name or NCBI TaxonomyID"
+                        },
+                        "reference": {
+                            "type": "boolean",
+                            "description": "Limit to reference genomes"
+                        }
+                    },
+                    "required": ["organism"]
+                },
+                "examples": [
+                    {
+                        "example": "Get genome information for Homo sapiens",
+                        "arguments": {
+                            "organism": "Homo sapiens",
+                            "reference": "true"
+                        }
+                    },
+                    {
+                        "example": "Show me the genome of E. coli",
+                        "arguments": {
+                            "organism": "Escherichia coli",
+                            "reference": "false"
+                        }
+                    }
+                ]
+            }
+        ]
 
 async def main():
     parser = argparse.ArgumentParser(description="NCBI MCP Server")
