@@ -1,6 +1,6 @@
 {
   "name": "ncbi-mcp",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Model Context Protocol (MCP) server that integrates NCBI Entrez capabilities.",
   "license": "Apache-2.0",
   "type": "module",
